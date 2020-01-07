@@ -44,8 +44,13 @@ public class LineFallMissileSquare : MonoBehaviour
 
     public float bezierSpeed = 0.0f;
 
+    private void OnDestroyAllObject()
+    {
+        Destroy(this.gameObject);
+    }
     private void OnEnable()
     {
+        GameManager.onDestroyAllObject += OnDestroyAllObject;
         GameManager.onPlayerDie += OnPlayerDie;
         GameManager.onDestroyAllEnemy += OnPlayerDie;
     }
@@ -135,5 +140,6 @@ public class LineFallMissileSquare : MonoBehaviour
     {
         GameManager.onPlayerDie -= OnPlayerDie;
         GameManager.onDestroyAllEnemy -= OnPlayerDie;
+        GameManager.onDestroyAllObject -= OnDestroyAllObject;
     }
 }

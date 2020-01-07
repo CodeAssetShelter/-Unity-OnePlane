@@ -20,21 +20,25 @@ public class ControllerEnemy : MonoBehaviour {
 
     public Animator enemyAnim;
 
+    [Header ("- Missiles")]
     public GameObject missile;
+    public GameObject missileTwo;
     public GameObject childEnemy;
-
+    [Range(10, 30)]
+    public float missileProbability;
 
     // Animation, Bezier Values
-
+    [Header("- OpCurves")]
     public OPCurves opCurves;
 
-    private float bezierSpeed = 0.0f;
+    [Header("- Move Values")]
     public float moveSpeed = 1f;
+    private float bezierSpeed = 0.0f;
     private Vector2 bezierStart = Vector2.zero;
     private Vector2 bezierCenter = Vector2.zero;
     private Vector2 bezierEnd = Vector2.zero;
     private Vector2 direction = Vector2.zero;
-
+    private bool setEvents = false;
     private float shotTimerCheck = 0.0f;
     public float shotTimer;
 
@@ -54,8 +58,17 @@ public class ControllerEnemy : MonoBehaviour {
         PlayRotateAnim(enemySpawnArea);
     }
 
+    private void OnDestroyAllObject()
+    {
+        Destroy(this.gameObject);
+    }
+    private void OnDestroy()
+    {
+        GameManager.onDestroyAllObject -= OnDestroyAllObject;
+    }
     private void OnEnable()
     {
+        GameManager.onDestroyAllObject += OnDestroyAllObject;
         enemyState = EnemyState.Spawned;
 
         bezierStart = this.gameObject.transform.position;
@@ -103,6 +116,12 @@ public class ControllerEnemy : MonoBehaviour {
             {
                 bezierSpeed += Time.deltaTime * moveSpeed;
 
+                if (bezierSpeed >= 0.5f && setEvents == false)
+                {
+                    this.transform.GetChild(0).GetComponent<Enemy>().SetEventAuto();
+                    setEvents = true;
+                }
+
                 switch (enemySpawnArea)
                 {
                     case (int)EnemySpawnArea.Left:
@@ -139,8 +158,16 @@ public class ControllerEnemy : MonoBehaviour {
         if (shotTimerCheck >= shotTimer)
         {
             // Missile display on Hierarchy Root
-            GameObject temp = Instantiate(missile, childEnemy.transform.position, Quaternion.Euler(0, 0, 0));
-            temp.GetComponent<MissileForEnemy>();
+
+            if (Random.Range(0, 100) >= missileProbability)
+            {
+                GameObject temp = Instantiate(missile, childEnemy.transform.position, Quaternion.Euler(0, 0, 0));
+                //temp.GetComponent<MissileForEnemy>();
+            }
+            else
+            {
+                GameObject temp = Instantiate(missileTwo, childEnemy.transform.position, Quaternion.Euler(0, 0, 0));
+            }
             shotTimerCheck = 0;
         }
     }
@@ -168,7 +195,7 @@ public class ControllerEnemy : MonoBehaviour {
                 enemyAnim.SetTrigger("SpawnR");
                 break;
             default:
-                Debug.LogError(this.name + " Error");
+                //Debug.LogError(this.name + " Error");
                 break;
         }
     }

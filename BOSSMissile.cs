@@ -38,8 +38,8 @@ public class BOSSMissile : MonoBehaviour
 
 
 
-    public enum BossPatternName { Normal = 0, Side, BigLaser, Round, RandomSpawn, StateCount }
-    BossPatternName bossPatternName;
+    public enum BossPatternName { Normal = 0, Side, Round, RandomSpawn, StateCount, BigLaser}
+    BOSSMissileModule.BossPatternName bossPatternName;
 
     // OpCurve
     //private float distance;
@@ -80,18 +80,18 @@ public class BOSSMissile : MonoBehaviour
         bezierEnd = end;
         missileMaxSpeed = chaseSpeed;
         startChase = chaseMode;
-        bossPatternName = (BossPatternName)pattern;
+        bossPatternName = (BOSSMissileModule.BossPatternName)pattern;
         parentPos = parentPosition;
 
         
-        if (bossPatternName == BossPatternName.Side)
+        if (bossPatternName == BOSSMissileModule.BossPatternName.Side)
         {
             bezierSpeed += 0.9f;
         }
 
-        if (bossPatternName == BossPatternName.Round)
+        if (bossPatternName == BOSSMissileModule.BossPatternName.Round)
         {
-            guidedIsActive = Random.Range(0, 100) > 95 ? true : false;
+            guidedIsActive = Random.Range(0, 100) > 60 ? true : false;
             if (guidedIsActive == true)
                 guidedTimer = Random.Range(2.5f, guidedTimerMax);
         }
@@ -110,7 +110,7 @@ public class BOSSMissile : MonoBehaviour
             if (bezierSpeed >= 1.0f)
             {
                 startChase = true;
-                if(bossPatternName == BossPatternName.Normal || bossPatternName == BossPatternName.Side)
+                if(bossPatternName == BOSSMissileModule.BossPatternName.Normal || bossPatternName == BOSSMissileModule.BossPatternName.Side)
                     direction = opCurves.SeekDirection(this.gameObject.transform.position, playerPos);
             }
 
@@ -152,7 +152,7 @@ public class BOSSMissile : MonoBehaviour
 
 
                 // guided area by RoundShot
-                if (bossPatternName == BossPatternName.Round)
+                if (bossPatternName == BOSSMissileModule.BossPatternName.Round)
                 {
                     if (guidedIsActive == true)
                     {
@@ -207,7 +207,7 @@ public class BOSSMissile : MonoBehaviour
                     //Debug.Log(missileColor);
                     //GameManager.Instance.ScoreAdd("Missile");
                     PublicValueStorage.Instance.AddMissileScore();
-                    bossPatternName = BossPatternName.StateCount;
+                    bossPatternName = BOSSMissileModule.BossPatternName.StateCount;
                     direction = opCurves.SeekDirection(this.gameObject.transform.position, parentPos);
                     missileCurrentSpeed = missileReflectSpeed;
                     break;

@@ -21,6 +21,7 @@ public class GameManager : MonoBehaviour {
         public string name;
         public ItemType typeEnum;
         public Sprite sprite;
+        public AudioClip useSound;
         public float duration;
         public float magnification = 1.0f;
         [Range(0, 1000)]
@@ -28,6 +29,10 @@ public class GameManager : MonoBehaviour {
 
         public float activeTimer = 0;
         public bool active = false;
+
+        public bool usingItemCreate = false;
+        [HideInInspector]
+        public UsingItem usingItem = null;
     }
 
     [System.Serializable]
@@ -99,7 +104,7 @@ public class GameManager : MonoBehaviour {
     //public static event PVSHandler onAddEnemyPos;
 
     public delegate int IntHandler(int index);
-    public static event IntHandler onGetBossHp;
+    //public static event IntHandler onGetBossHp;
     //public static event ButtonHandler UseItemButton;
 
 
@@ -110,10 +115,8 @@ public class GameManager : MonoBehaviour {
 
 
 
-
-
     // Level system
-    enum GameState {Lobby = 0, Play, BossSpawn, BossPlay, LevelChange, Respawning, GameOver, GameStateCount}
+    public enum GameState {Lobby = 0, Play, BossSpawn, BossPlay, LevelChange, Respawning, GameOver, GameStateCount}
     GameState gameState;
 
     private int live = 3; // no use
@@ -122,6 +125,8 @@ public class GameManager : MonoBehaviour {
     public int levelWithEnemyEa = 25;
     public int levelWithDiedEnemy = 0;
 
+    [Header("Advertise")]
+    public AdManager adManager;
 
     // Position Values
     [Header("Positions & Spawns")]
@@ -136,17 +141,20 @@ public class GameManager : MonoBehaviour {
     public ItemType debugAlwaysCreateThisItem;
 
 
+    [Header("Common Sounds")]
+    public AudioClip soundGetItem;
+
     // Game Objects
     [Header("Don't Add Hierarchy Objects")]
     public GameObject playerPrefab;
     private GameObject player;
     private Vector2 playerPos;
     public GameObject enemyPrefab;
-    public GameObject item;
+    public Item item;
 
     [Header("Boss Prefabs")]
     public CreateBossModule createBossModule;
-
+    public Slider bossHpBar;
 
     // Game Balance Values
     // Stage Values
@@ -160,7 +168,7 @@ public class GameManager : MonoBehaviour {
     private int credit = 5000;
 
     [Header("! ! ! BOSS VALUES ! ! !")]
-    public float bossHp = 50f;
+    public float bossHp = 100f;
     private bool isBossAlive = false;
 
 
@@ -202,6 +210,11 @@ public class GameManager : MonoBehaviour {
     public GameObject gamePlayUI;
     public Text creditboardInGame;
     public Text creditboardInUI;
+    public Image lifeImagePrefab;
+
+    [Header("On GameOver objects")]
+    public GameObject gameover;
+    public GameObject pauseButton;
 
     // Game Menu UI Objects
     [Header("Menu UI")]
@@ -218,9 +231,13 @@ public class GameManager : MonoBehaviour {
     public ItemOptions[] itemOption;
     public GameObject itemSlot;
     public GameObject buttonPrefab;
-    private int itemAllChanceValue = 0;
-    //public Sprite[] itemImage;
+    public GameObject itemUseCheckBlock;
+    public UsingItem itemUseCheckBlockBox;
+    public int itemDropBossModeEa = 25;
 
+    private int itemAllChanceValue = 0;
+    
+    //public Sprite[] itemImage;
 
     [Range(0, 5)]
     public int itemSlotEa = 0;
@@ -250,7 +267,7 @@ public class GameManager : MonoBehaviour {
         //
         //
 
-        Screen.SetResolution(720, 720 * (9 / 16), false);
+        //Screen.SetResolution(720, 720 * (9 / 16), false);
 
         //
         //
@@ -296,8 +313,8 @@ public class GameManager : MonoBehaviour {
         PublicValueStorage.Instance.SetScreenSize(screenHeight, screenWidth);
 
 
-        Debug.Log("height : " + screenHeight);
-        Debug.Log("width : " + screenWidth);
+        //Debug.Log("height : " + screenHeight);
+        //Debug.Log("width : " + screenWidth);
 
 
         // 190207 LifeBalance
@@ -373,7 +390,7 @@ public class GameManager : MonoBehaviour {
 
         if (File.Exists(Application.persistentDataPath + "/OnePlane.dat") == true)
         {
-            Debug.Log(Application.persistentDataPath);
+            //Debug.Log(Application.persistentDataPath);
             SaveData.Instance.LoadUserData();
             credit = SaveData.Instance.LoadCredit();
             bestScore = SaveData.Instance.LoadBestScore();
@@ -381,17 +398,19 @@ public class GameManager : MonoBehaviour {
             creditboardInUI.text = "" + SaveData.Instance.LoadCredit();
             //Debug.Log(SaveData.Instance.LoadCredit());
             //Debug.Log(SaveData.Instance.LoadBestScore());
+            SetPlane();
         }
         else
         {
-            Debug.Log("There is no savedata");
+            //Debug.Log("There is no savedata");
         }
+        SoundManager.Instance.BgmSpeaker(SoundManager.BGM.Lobby, SoundManager.State.Play);
     }
 
     // Update is called once per frame
     void Update()
     {
-
+        //Debug.Log("State : " + gameState);
         if (gameState == GameState.Lobby)
         {
             //player.transform.SetParent(playerSlot.transform);
@@ -425,8 +444,13 @@ public class GameManager : MonoBehaviour {
             if (isBossAlive == false)
             {
                 CreateBoss();
+                ChangeGameState(GameState.BossPlay);
+                //Debug.Log("create BOSS");
             }
-            ChangeGameState(GameState.BossPlay);
+            else
+            {
+                //Debug.Log("Failed create BOSS");
+            }
         }
         if (gameState == GameState.BossPlay)
         {
@@ -435,9 +459,13 @@ public class GameManager : MonoBehaviour {
         if (gameState == GameState.LevelChange)
         {
             level++;
-            Debug.Log("Now Game Level is : lv." + level);
+            //Debug.Log("Now Game Level is : lv." + level);
             ChangeGameState(GameState.Play);
             LevelUpData();
+        }
+        if (gameState == GameState.GameOver)
+        {
+
         }
     }
 
@@ -452,6 +480,7 @@ public class GameManager : MonoBehaviour {
             enemyMaxSpawn += level;
 
         bossHp += (level * 2) + enemyMaxSpawn;
+        if (bossHp >= 500) bossHp = 500;
         PublicValueStorage.Instance.SetAddSpeedRivisionValue(((float)level * 0.1f));
     }
 
@@ -477,16 +506,37 @@ public class GameManager : MonoBehaviour {
                             break;
 
                         case ItemType.BigShield:
-                            playerScript.OP_BigShield(playerScript.op_shieldOriginalSize);
+                            foreach (ItemOptions item in itemOption)
+                            {
+                                if (item.typeEnum == ItemType.ShieldFullCharge)
+                                {
+                                    if (item.active == false)
+                                        playerScript.OP_BigShield(playerScript.op_shieldOriginalSize);
+                                }
+                            }
                             break;
 
                         case ItemType.ShieldFullCharge:
+                            foreach (ItemOptions item in itemOption)
+                            {
+                                if (item.typeEnum == ItemType.BigShield)
+                                {
+                                    if (item.active == false)
+                                        playerScript.OP_BigShield(playerScript.op_shieldOriginalSize);
+                                }
+                            }
                             playerScript.OP_ShieldFullCharge(false);
-                            playerScript.OP_BigShield(playerScript.op_shieldOriginalSize);
+                            break;
+
+                        case ItemType.PowerBooster:
+                            playerScript.OP_PowerBooster(1.0f);
+                            playerScript.OP_PowerBoosterDamage(1.0f);
                             break;
                     }
                     itemOption[i].active = false;
                     itemOption[i].activeTimer = 0;
+                    if (itemOption[i].usingItem != null)
+                        Destroy(itemOption[i].usingItem.gameObject);
                 }
             }
         }
@@ -514,13 +564,12 @@ public class GameManager : MonoBehaviour {
     {
         //Debug.Log("CB");
         isBossAlive = true;
-
         createBossModule.CreateBoss(screenWidth, screenHeight, player, bossHp, CBBossDie);
 
         //GameObject tempBoss = Instantiate(bossPrefabs[bossIndex], new Vector3(0, screenHeight * 0.75f, 0), Quaternion.Euler(0, 0, 0));
         //ControllerBOSS tempBossScript;
 
-        //PublicValueStorage.Instance.SetBossHp(bossHp);
+        PublicValueStorage.Instance.SetBossHp(bossHp);
 
         //tempBossScript = tempBoss.GetComponent<ControllerBOSS>();
 
@@ -541,8 +590,9 @@ public class GameManager : MonoBehaviour {
 
     private void DeadEnemyCountUp()
     {
-        levelWithDiedEnemy++;        
+        levelWithDiedEnemy++;
         // change state to BossSpawn
+        //Debug.Log("Count");
         if (levelWithDiedEnemy >= levelWithEnemyEa)
         {
             if (isBossAlive == false)
@@ -555,6 +605,7 @@ public class GameManager : MonoBehaviour {
     private void ChangeGameState(GameState state)
     {
         gameState = state;
+        PublicValueStorage.Instance.SetGameState(gameState);
     }
 
 
@@ -568,13 +619,53 @@ public class GameManager : MonoBehaviour {
     private void CBPlayerDie(int index)
     {
         //Debug.Log("Player Died");
-        onPlayerDie();
+        if (index != -1)
+            onPlayerDie();
+
         enemyCurrentSpawned = 0;
         ChangeGameState(GameState.GameOver);
-        ResetGame();
+        GameOver();
+
         //onPlayerDie();
     }
 
+    private void GameOver()
+    {
+        pauseButton.SetActive(false);
+
+        Vector3 pos = gameover.transform.position;
+        pos.x = 0;
+        pos.y = 0;
+        pos.y -= screenHeight + (gameover.GetComponent<Image>().sprite.bounds.extents.y * 2.5f);
+        gameover.transform.position = pos;
+
+        gameover.SetActive(true);
+
+        SoundManager.Instance.BgmSpeaker(SoundManager.BGM.Stage, SoundManager.State.Pause);
+
+        StartCoroutine(CoroutineGameOver(gameover.transform.position));
+    }
+    float gameoverProcess = 0;
+    private IEnumerator CoroutineGameOver(Vector2 start)
+    {
+        while (true)
+        {
+            gameoverProcess += Time.deltaTime * 0.5f;
+            gameover.transform.position = Vector2.Lerp(start, Vector2.zero, gameoverProcess);
+            if (gameoverProcess >= 2.0f)
+            {
+                ResetGame();
+                gameover.transform.position = start;
+                gameover.SetActive(false);
+                gameoverProcess = 0;
+                UnityEngine.SceneManagement.SceneManager.LoadScene(
+                    UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
+                adManager.ActiveAD();
+                yield break;
+            }
+            yield return null;
+        }
+    }
 
     private void CBDestroyAllEnemy()
     {
@@ -583,13 +674,28 @@ public class GameManager : MonoBehaviour {
 
     private void CBUseItemBomb()
     {
+        if (onDeadByItemBomb == null)
+        {
+            //Debug.Log("Bomb Target is empty");
+            return;
+        }
         onDeadByItemBomb();
-        DeadEnemyCountUp();
+        if (gameState != GameState.BossPlay)
+            DeadEnemyCountUp();
     }
 
     private void CBDeadByItemBomb(GameObject target)
     {
+        // Set Dead by bomb effect to target position
+        // Do something
         
+        // Require Values
+        // Animation Array
+        // Animation Clip
+        // Animation Timer
+        // This objects are must running seperately
+
+        // Done
         enemyPos.Remove(target);
         enemyCurrentSpawned--;
         DropItem(target.transform.position);
@@ -606,14 +712,18 @@ public class GameManager : MonoBehaviour {
     }
     private void CBBossDie(GameObject target)
     {
-        Debug.Log("GM BossDie called by ControllerBoss.cs");
+        //Debug.Log("GM BossDie called by ControllerBoss.cs");
         enemyPos.Remove(target);
         enemyCurrentSpawned = 0;
 
         isBossAlive = false;
+        DropItem(target.transform.position, true);
+
+        ScoreAdd("Boss");
 
         Destroy(target);
 
+        SoundManager.Instance.BgmSpeaker(SoundManager.BGM.Lobby, SoundManager.State.UnPause);
         ChangeGameState(GameState.LevelChange);
     }
 
@@ -626,7 +736,7 @@ public class GameManager : MonoBehaviour {
     // When Enemy Die, Drop Item and Add Score
     private void CBEnemyDie(GameObject target)
     {
-        Debug.Log("Remain : " + levelWithDiedEnemy + " // Time : " + System.DateTime.Now);
+        //Debug.Log("Remain : " + levelWithDiedEnemy + " // Time : " + System.DateTime.Now);
         enemyPos.Remove(target);
         Destroy(target);
         enemyCurrentSpawned--;
@@ -637,14 +747,14 @@ public class GameManager : MonoBehaviour {
         ScoreAdd("Enemy");
     }
 
-
     private void CBGameStart()
     {
         //ChangeGameState(GameState.Play);
         InitGamePlay();
         Lobby.gameObject.SetActive(false);
         gamePlayUI.SetActive(true);
-        PublicValueStorage.Instance.SetBossHpBar(GameObject.Find("Boss Shield Gauge").GetComponent<Slider>());
+        UICanvas.Instance.SetLifeBlock(playerScript.life, lifeImagePrefab);
+        PublicValueStorage.Instance.SetBossHpBar(bossHpBar);
     }
 
 
@@ -681,14 +791,12 @@ public class GameManager : MonoBehaviour {
     // When Player get item, GameManager recognize item type
     private void CBGetItem(int index)
     {
-        //Debug.Log("Get Item : " + index);
         for (int i = 0; i < itemOption.Length; i++)
         {
             if (i == index)
             {
                 SetItem(i);
                 return;
-                //Debug.Log("Item " + index);
             }
         }
     }
@@ -697,10 +805,34 @@ public class GameManager : MonoBehaviour {
     private void CBDeactiveShop()
     {
         //Debug.Log(planes.selectedIndex);
-        playerScript.SetPlayerSprite(planes.planeSprite[planes.selectedIndex]);
+        //playerScript.SetPlayerSprite(planes.planeSprite[planes.selectedIndex]);
+        SetPlane();
     }
 
+    private void SetPlane()
+    {
+        int selected = planes.selectedIndex;
+        //Debug.Log("selected index : " + selected);
+        Planes.GoodsInfo goods = planes.goodsInfo[selected];
+        playerScript.SetPlayerOptions(
+            planes.planeSprite[selected], goods.itemSlot, goods.life, goods.shield);
+        //Debug.Log("NAME : " + goods.name);
+        itemSlotEa = goods.itemSlot;
+        //Debug.Log("item slot ea : " + itemSlotEa);
 
+        foreach (ItemSlotBox box in itemSlotBox)
+        {
+            Destroy(box.itemSlotBox);
+        }
+        itemSlotBox = new ItemSlotBox[itemSlotEa];
+        for (int i = 0; i < itemSlotBox.Length; i++)
+        {
+            itemSlotBox[i] = new ItemSlotBox(buttonPrefab, itemSlot, i);
+        }
+
+        playerScript.SetPlayerOptions
+            (planes.planeSprite[selected], goods.itemSlot, goods.life, goods.shield);
+    }
 
 
     /////////////////////////////////////////////////////////
@@ -716,7 +848,7 @@ public class GameManager : MonoBehaviour {
         // Switch on Boss create (not completed)
         if (levelWithDiedEnemy >= levelWithEnemyEa || createdEnemies >= levelWithEnemyEa)
         {
-            Debug.Log(levelWithDiedEnemy + ">" + levelWithEnemyEa + "||" + createdEnemies + ">=" + levelWithEnemyEa);
+            //Debug.Log(levelWithDiedEnemy + ">" + levelWithEnemyEa + "||" + createdEnemies + ">=" + levelWithEnemyEa);
             //Debug.Log("Can't Create Enemy!");
             return;
         }
@@ -730,8 +862,8 @@ public class GameManager : MonoBehaviour {
         {
             if (levelWithDiedEnemy >= levelWithEnemyEa || createdEnemies >= levelWithEnemyEa)
             {
-                Debug.Log(levelWithDiedEnemy + ">" + levelWithEnemyEa + "||" + createdEnemies + ">=" + levelWithEnemyEa);
-                Debug.Log("Can't Create Enemy in Spawn Code Area!");
+                //Debug.Log(levelWithDiedEnemy + ">" + levelWithEnemyEa + "||" + createdEnemies + ">=" + levelWithEnemyEa);
+                //Debug.Log("Can't Create Enemy in Spawn Code Area!");
                 return;
             }
 
@@ -768,7 +900,7 @@ public class GameManager : MonoBehaviour {
                     break;
 
                 default:
-                    Debug.Log("GameManager EnemySpawn Error");
+                    //Debug.Log("GameManager EnemySpawn Error");
                     break;
             }
 
@@ -787,7 +919,7 @@ public class GameManager : MonoBehaviour {
 
             enemyCurrentSpawned++;
             createdEnemies++;
-            Debug.Log("enemyCurrentSpawned : " + enemyCurrentSpawned + "  createdEnemies : " + createdEnemies);
+            //Debug.Log("enemyCurrentSpawned : " + enemyCurrentSpawned + "  createdEnemies : " + createdEnemies);
             enemySpawnTimer = timerZero;
         }
     }
@@ -797,7 +929,6 @@ public class GameManager : MonoBehaviour {
     // When this method called by GetItem, SetItem set item to itemSlotBox
     private void SetItem(int itemIndex)
     {
-
         if (itemOption[itemIndex + 1].typeEnum == ItemType.GetCredit)
         {
             ActivateItem(itemOption[itemIndex + 1]);
@@ -818,6 +949,8 @@ public class GameManager : MonoBehaviour {
                 itemSlotBox[i].itemType = itemOption[itemIndex + 1].typeEnum;
                 itemSlotBox[i].itemSlotBoxBeSet = true;
                 itemSlotBox[i].itemSlotButton.SetButtonImage(itemOption[itemIndex + 1].sprite);
+
+                SoundManager.Instance.ShortSpeaker(SoundManager.Speaker.Center, soundGetItem);
                 return;
             }
         }
@@ -848,20 +981,52 @@ public class GameManager : MonoBehaviour {
     {
         //Debug.Log("Activate " + itemOptionIndex);
         //ItemType itemtype = itemOption[itemOptionNum].itemTypeEnum;
-        
+
+        if (itemOptionInfo.useSound != null)
+            SoundManager.Instance.ShortSpeaker(SoundManager.Speaker.Center, itemOptionInfo.useSound);
+
+
+        // 아이템 유지시간 아이콘 코드
+        if (itemOptionInfo.active == false)
+        {
+            if (itemOptionInfo.usingItemCreate == true)
+            {
+                if (itemOptionInfo.usingItem == null)
+                {
+                    itemOptionInfo.usingItem = Instantiate(itemUseCheckBlockBox, itemUseCheckBlock.transform);
+                    itemOptionInfo.usingItem.SetItem(itemOptionInfo.duration, itemOptionInfo.sprite);
+                }
+            }
+        }
+        if (itemOptionInfo.active == true && (itemOptionInfo.typeEnum != ItemType.GetCredit))
+        {
+            if (itemOptionInfo.usingItemCreate == true)
+            {
+                if (itemOptionInfo.usingItem == null)
+                {
+                    itemOptionInfo.usingItem = Instantiate(itemUseCheckBlockBox, itemUseCheckBlock.transform);
+                    itemOptionInfo.usingItem.SetItem(itemOptionInfo.duration, itemOptionInfo.sprite);
+                }
+                else
+                {
+                    itemOptionInfo.usingItem.ResetTimer();
+                }
+            }
+        }
+
+
 
         switch (itemOptionInfo.typeEnum)
         {
             case ItemType.GetCredit:
                 // 크레딧 UI 를 따로 제작할 것
                 RefreshCredit((int)itemOptionInfo.duration);
-                //Debug.Log(itemOptionInfo.typeEnum + " : " + itemOptionInfo.active);
                 break;
 
             case ItemType.ScoreBooster:
                 itemOptionInfo.active = true;
                 itemOptionInfo.activeTimer = 0;
-                igsScoreMultifly = (int)itemOptionInfo.magnification;
+                igsScoreMultifly = (int)itemOptionInfo.magnification;                
                 //Debug.Log(itemOptionInfo.typeEnum + " : " + itemOptionInfo.active);
                 break;
 
@@ -895,6 +1060,8 @@ public class GameManager : MonoBehaviour {
             case ItemType.PowerBooster:
                 itemOptionInfo.active = true;
                 itemOptionInfo.activeTimer = 0;
+                playerScript.OP_PowerBooster(itemOptionInfo.magnification);
+                playerScript.OP_PowerBoosterDamage(2.0f);
                 //Debug.Log(itemOptionInfo.typeEnum + " : " + itemOptionInfo.active);
                 break;
         }
@@ -904,9 +1071,12 @@ public class GameManager : MonoBehaviour {
     // When game is over, Reset all parameter (will)
     public void ResetGame()
     {
+        Destroy(player.gameObject);
+
         player = Instantiate(playerPrefab, playerPrefab.transform.position, Quaternion.Euler(0, 0, 0));
         playerScript = player.GetComponent<ControllerPlayer>();
         playerScript.SetCallbacks(CBPlayerDie, CBGetItem, CBChangeGameStart);
+        
         //playerScript.SetCallback(0, CBPlayerDie);
         //playerScript.SetCallback(1, CBGetItem);
         //player.GetComponent<ControllerPlayer>().SetCallback(0, PlayerDie);
@@ -934,11 +1104,25 @@ public class GameManager : MonoBehaviour {
         levelWithDiedEnemy = 0;
 
         SaveData.Instance.SaveUserData();
+        
+
+        onPlayerDie = null;
+        isBossAlive = false;
+
+        if (onDestroyAllObject != null)
+        {
+            onDestroyAllObject();
+            onDestroyAllObject = null;
+        }
+
+
+        ChangeGameState(GameState.Lobby);
+        SoundManager.Instance.BgmSpeaker(SoundManager.BGM.Lobby, SoundManager.State.Play);
     }
 
     private void CompareBestScore()
     {
-        Debug.Log(score + " " + bestScore);
+        //Debug.Log(score + " " + bestScore);
         if (score >= bestScore)
         {
             bestScore = score;
@@ -957,63 +1141,155 @@ public class GameManager : MonoBehaviour {
     // 190121 LifeBalance
     // DropItem according to probability (gasha)
 
-    public void DropItem(Vector2 position)
+    public void DropItem(Vector2 position, bool isBoss = false)
     {
-        // 190227 LifeBalance
-        // Debug State
-        if (isDebug == true)
+
+        if (isBoss == false)
         {
-            for(int i = 0; i<itemOption.Length; i++)
+            // 190227 LifeBalance
+            // Debug State
+            if (isDebug == true)
             {
-                if(itemOption[i].typeEnum == debugAlwaysCreateThisItem)
+                for (int i = 0; i < itemOption.Length; i++)
                 {
-                    //Debug.Log("DROP : " + (i - 1).ToString());
-                    item.name = (i - 1).ToString();                    
-                    item.GetComponent<SpriteRenderer>().sprite = itemOption[i].sprite;
-                    Instantiate(item, position, Quaternion.Euler(Vector2.zero));
-                    return;
+                    if (itemOption[i].typeEnum == debugAlwaysCreateThisItem)
+                    {
+                        item.spriteRenderer.sprite = itemOption[i].sprite;
+                        Item forScript = Instantiate(item, position, Quaternion.Euler(Vector2.zero));
+                        //forScript.spriteRenderer.sprite = itemOption[i].sprite;
+                        //Debug.Log(" : : : " + forScript.spriteRenderer.sprite.name);
+                        forScript.name = (i - 1).ToString();
+
+                        if (itemOption[i].typeEnum == ItemType.GetCredit)
+                        {
+                            forScript.ActiveCoinAnimation(true);
+                        }
+
+                        return;
+                    }
+                }
+            }
+
+
+            // 190128 LifeBalance
+            // Change Item droptable algorhythm
+
+            //int itemValue = Random.Range(0, itemOption[itemOption.Length - 1].itemDropChance);
+            int itemValue = Random.Range(0, itemAllChanceValue);
+            int currValue = 0;
+            //Debug.Log(itemValue);
+
+
+            // Normal state
+            for (int i = 0; i < itemOption.Length; i++)
+            {
+                currValue += itemOption[i].dropChance;
+                if (i == 0)
+                {
+                    if (itemValue < currValue)
+                    {
+                        //Debug.Log("Failed");
+                        return;
+                    }
+                }
+                // 'i' is bigger than 0 && 'i' is smaller than items.Length - 1
+                else
+                {
+                    // If itemValue is between current and next
+                    if (itemValue > itemOption[i - 1].dropChance && itemValue <= currValue)
+                    {
+                        item.spriteRenderer.sprite = itemOption[i].sprite;
+                        Item forScript = Instantiate(item, position, Quaternion.Euler(Vector2.zero));
+                        //forScript.spriteRenderer.sprite = itemOption[i].sprite;
+                        //Debug.Log(" : : : " + forScript.spriteRenderer.sprite.name);
+                        forScript.name = (i - 1).ToString();
+
+                        if (itemOption[i].typeEnum == ItemType.GetCredit)
+                        {
+                            forScript.ActiveCoinAnimation(true);
+                        }
+
+                        //Debug.Log("Create : " + item.name + "//// itemValue : " + itemValue + "//// currValue : " + currValue);
+                        return;
+                    }
                 }
             }
         }
-
-
-        // 190128 LifeBalance
-        // Change Item droptable algorhythm
-
-        //int itemValue = Random.Range(0, itemOption[itemOption.Length - 1].itemDropChance);
-        int itemValue = Random.Range(0, itemAllChanceValue);
-        int currValue = 0;
-        //Debug.Log(itemValue);
-        
-        
-        // Normal state
-        for (int i = 0; i < itemOption.Length; i++)
+        else // isBoss == true
         {
-            currValue += itemOption[i].dropChance;
-            if (i == 0)
+            // Change Item droptable algorhythm
+            int itemEaExceptCredit = itemDropBossModeEa - 3;
+            ItemOptions itemGetCreditInfo = new ItemOptions();
+            int itemGetCreditInfoIndex = 0;
+            // Find GetCredit Info and Set It to itemGetCreditInfo;    
+            foreach (ItemOptions info in itemOption)
             {
-                if (itemValue < currValue)
+                if (info.typeEnum == ItemType.GetCredit)
                 {
-                    //Debug.Log("Failed");
-                    return;
+                    itemGetCreditInfo = info;
+                    break;
+                }
+                else
+                {
+                    itemGetCreditInfoIndex++;
                 }
             }
-            // 'i' is bigger than 0 && 'i' is smaller than items.Length - 1
-            else
+
+            for (int itemDropNumber = 0; itemDropNumber < (itemDropBossModeEa + level); itemDropNumber++)
             {
+                Vector2 addForce = new Vector2(Random.Range(-0.5f, 0.5f), Random.Range(-0.5f, 0.5f));
+
+                // Normal state
                 // If itemValue is between current and next
-                if (itemValue > itemOption[i - 1].dropChance && itemValue <= currValue)
+                // 보스 아이템 드랍갯수 - 3 만큼 까지는 돈을 드랍한다
+                if (itemDropNumber < itemEaExceptCredit)
                 {
-                    Instantiate(item, position, Quaternion.Euler(Vector2.zero));
-                    item.GetComponent<SpriteRenderer>().sprite = itemOption[i].sprite;
-                    item.name = (i-1).ToString();
+                    Item forScript;
+                    item.spriteRenderer.sprite = itemGetCreditInfo.sprite;
+                    forScript = Instantiate(item, position, Quaternion.Euler(Vector2.zero));
+                    //forScript.spriteRenderer.sprite = itemOption[i].sprite;
+                    //Debug.Log(" : : : " + forScript.spriteRenderer.sprite.name);
+                    forScript.name = (itemGetCreditInfoIndex - 1).ToString();
+
+                    if (itemGetCreditInfo.typeEnum == ItemType.GetCredit)
+                    {
+                        forScript.ActiveCoinAnimation(true);
+                    }
+                    forScript.ItemAddForce(addForce);
+                }
+                else
+                {
+                    int itemIndex = Random.Range(1, itemOption.Length);
+
+                    if (itemOption[itemIndex].typeEnum == ItemType.GetCredit)
+                    {
+                        while (true)
+                        {
+                            itemIndex = Random.Range(1, itemOption.Length);
+                            if (itemOption[itemIndex].typeEnum != ItemType.GetCredit)
+                            {
+                                break;
+                            }
+                        }
+                    }
+                    Item forScript;
+                    item.spriteRenderer.sprite = itemOption[itemIndex].sprite;
+                    forScript = Instantiate(item, position, Quaternion.Euler(Vector2.zero));
+                    //forScript.spriteRenderer.sprite = itemOption[i].sprite;
+                    //Debug.Log(" : : : " + forScript.spriteRenderer.sprite.name);
+                    forScript.name = (itemIndex - 1).ToString();
+
+                    if (itemOption[itemIndex].typeEnum == ItemType.GetCredit)
+                    {
+                        forScript.ActiveCoinAnimation(true);
+                    }
+                    forScript.ItemAddForce(addForce);
                     //Debug.Log("Create : " + item.name + "//// itemValue : " + itemValue + "//// currValue : " + currValue);
-                    return;
                 }
             }
         }
     }
-
+    
     // 190501 LifeBalance
     // When player touched gameplay button, this wiil be actived
     // Pref : Gamemanager.cs
@@ -1024,6 +1300,7 @@ public class GameManager : MonoBehaviour {
         //Debug.Log("1");
         playerScript.SetSpawnAnimation(playerPosition.transform.position, playerSpawnAnimSpeed);
         RefreshCredit(0);
+        SoundManager.Instance.BgmSpeaker(SoundManager.BGM.Stage, SoundManager.State.Play);
         //Debug.Log("2");
     }
 
@@ -1032,7 +1309,7 @@ public class GameManager : MonoBehaviour {
     // Refresh Credit value
     private void RefreshCredit(int value)
     {
-        credit += value;
+        credit += value * igsScoreMultifly;
         creditboardInGame.text = "" + credit;
     }
     // 190507 LifeBalance
@@ -1062,6 +1339,7 @@ public class GameManager : MonoBehaviour {
     /// </param>
     public void ScoreAdd(string kind)
     {
+        if (scoreboard == null) return;
         switch(kind)
         {
             case "Enemy":
@@ -1074,8 +1352,11 @@ public class GameManager : MonoBehaviour {
                 scoreboard.text = "" + score;
                 break;
 
+            case "Boss":
+                score += (100 * igsScoreMultifly);
+                break;
             default:
-                Debug.Log("There is abnormal param");
+                //Debug.Log("There is abnormal param");
                 break;
         }
     }
@@ -1096,4 +1377,36 @@ public class GameManager : MonoBehaviour {
     //{
     //    return screenSize;
     //}
+
+
+    
+    // 게임 오버에 쓸거
+    public void ReturnToLobby()
+    {
+        OnePlanePause(1.0f);
+        ResetGame();
+        UnityEngine.SceneManagement.SceneManager.LoadScene(
+            UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
+        adManager.ActiveAD();
+        //ResetGame();
+
+        //UnityEngine.SceneManagement.SceneManager.LoadScene(
+        //    UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
+    }
+
+    public void OnePlanePause(float timeScale)
+    {
+        Time.timeScale = timeScale;
+    }
+
+    private void OnApplicationQuit()
+    {
+        if (score >= bestScore)
+        {
+            bestScore = score;
+        }
+
+        SaveData.Instance.SaveUserDataFromQuitGame(credit, bestScore, 
+            SoundManager.Instance.bgmVolume, SoundManager.Instance.effectVolume) ;
+    }
 }

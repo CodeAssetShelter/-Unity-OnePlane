@@ -16,7 +16,8 @@ public class MissileModuleRLI : MonoBehaviour
     // Debug
     public bool DebugModule = false;
     public bool AllStop = false;
-    public ControllerPlayer debugPlayer;
+    //public ControllerPlayer debugPlayer;
+    public ControllerPlayer player;
 
     // Common Settings
     [HideInInspector]
@@ -42,9 +43,10 @@ public class MissileModuleRLI : MonoBehaviour
 
     private void OnDestroyAllRoute()
     {
+        //Debug.Log("Connected Ladder : " + destroyAllRoute.GetInvocationList().Length);
         if (destroyAllRoute == null)
         {
-            Debug.Log("Is empty");
+            //Debug.Log("Is empty");
             return;
         }
         destroyAllRoute();
@@ -143,7 +145,7 @@ public class MissileModuleRLI : MonoBehaviour
                     break;
 
                 default:
-                    Debug.LogError("Set Last Position Error");
+                    //Debug.LogError("Set Last Position Error");
                     break;
             }
         } 
@@ -167,7 +169,7 @@ public class MissileModuleRLI : MonoBehaviour
                     break;
 
                 default:
-                    Debug.LogError("Get Next Position Error");
+                    //Debug.LogError("Get Next Position Error");
                     break;
             }
         }
@@ -177,6 +179,14 @@ public class MissileModuleRLI : MonoBehaviour
             lastPosLeft = lastPosRight = resetPosition;
         }
     }
+
+    //
+    [Header("- Sound")]
+    public AudioClip soundEditLadder;
+    public AudioClip soundEditRoute;
+    public AudioClip soundRLIMissile;
+    private AudioClip soundSendClip;
+    private SoundManager.Speaker soundSendSpeaker = SoundManager.Speaker.Center;
 
     // Prefabs
     [Header("- Prefabs")]
@@ -292,14 +302,13 @@ public class MissileModuleRLI : MonoBehaviour
     private Vector2 bezierEnd = Vector2.zero;
     private Vector2 direction = Vector2.zero;
 
-    private Transform player;
     private Vector2 targetPos = Vector2.zero;
 
     // Screen Size (temporary)
     private float screenHeight;
     private float screenWidth;
 
-    public void InitBossMissileModule(float height, float width, Transform player)
+    public void InitBossMissileModule(float height, float width, GameObject player)
     {
         LadderList = new List<LadderPrefab>();
 
@@ -307,7 +316,7 @@ public class MissileModuleRLI : MonoBehaviour
         screenHeight = height;
         screenWidth = width;
         bossPatternState = BossPatternState.Shuffle;
-        this.player = player;
+        this.player = player.GetComponent<ControllerPlayer>();
         missileSpeed = PublicValueStorage.Instance.GetAddSpeedRivisionValue();
 
         //GameObject copyLadder = Instantiate(Ladder, this.transform.parent);
@@ -317,23 +326,31 @@ public class MissileModuleRLI : MonoBehaviour
 
         if (DebugModule == true)
         {
-            this.player.position = new Vector3(0, -4.1f, 0);
+            player.transform.position = new Vector3(0, -4.1f, 0);
         }
+
     }
 
     // 190315 LifeBalance
     // This is update() of BOSSMissilePattern, will used by ControllerBOSS.cs
     public void LaunchMissile()
     {
+        //Debug.Log("::: " + bossPatternState);
         if (AllStop != true)
         {
             BossMissile();
 
             if (routeBossPositionChange == true)
             {
+                if (routeBossMoveProcess == 0)
+                {
+                    RotateBossToDefault();
+                }
+
                 routeBossMoveProcess += Time.deltaTime * routeBossMoveSpeed;
                 this.transform.parent.GetChild(0).transform.position =
                     Vector3.Lerp(routeBossCurrentPosition, routeBossNextPosition, routeBossMoveProcess);
+
 
                 if (routeBossMoveProcess >= 1.0f)
                 {
@@ -352,7 +369,7 @@ public class MissileModuleRLI : MonoBehaviour
         if (bossPatternState == BossPatternState.Shuffle)
         {
             bossPatternState = BossPatternState.Selected;
-            Debug.Log("Selected");
+            //Debug.Log("Selected");
         }
         if (bossPatternState == BossPatternState.Selected)
         {
@@ -372,6 +389,7 @@ public class MissileModuleRLI : MonoBehaviour
                 if (firstLaunchPattern == true)
                 {
                     bossPatternName = BossPatternName.FirstLaunch;
+                    SoundManager.Instance.ShortSpeaker(SoundManager.Speaker.Center, soundEditLadder);
                 }
                 else
                 {
@@ -404,7 +422,7 @@ public class MissileModuleRLI : MonoBehaviour
                         }
                         else if (bossPatternName == BossPatternName.EditRoute)
                         {
-                            Debug.Log("EditRoute Must set after EditLadder");
+                            //Debug.Log("EditRoute Must set after EditLadder");
                             bossPatternName = BossPatternName.StateCount;
                             cooldownTimerCheck = cooldownTimer - 1.0f;
                         }
@@ -416,13 +434,17 @@ public class MissileModuleRLI : MonoBehaviour
                             {
                                 attackTurns = Random.Range(1, attackTurnMax);
                                 attackSetTurnCount = true;
+
+                                RotateBossToDefault();
                             }
                             else
                             {
                                 attackTurnCount++;
+
+                                // Turn to Player's attack chance
                                 if (attackTurnCount >= attackTurns)
                                 {
-                                    Debug.Log("Count Reset");
+                                    //Debug.Log("Count Reset");
                                     attackForceMode = false;
                                     attackSetTurnCount = false;
                                     attackTurnCount = 0;
@@ -436,11 +458,13 @@ public class MissileModuleRLI : MonoBehaviour
                         {
                             case BossPatternName.EditLadder:
                                 ladderState = (LadderState)Random.Range(0, (int)LadderState.StateCount);
+                                SoundManager.Instance.ShortSpeaker(SoundManager.Speaker.Center, soundEditLadder);
                                 OnDestroyAllRoute();
                                 ClearDestroyAllRouteInvoke();
                                 break;
 
                             case BossPatternName.EditRoute:
+                                SoundManager.Instance.ShortSpeaker(SoundManager.Speaker.Center, soundEditRoute);
                                 routeTerm = LadderList[1].start.transform.position.y - LadderList[1].end.transform.position.y;
                                 routeEa = Random.Range(routeMin, routeMax);
                                 routeTerm /= routeEa;
@@ -477,7 +501,7 @@ public class MissileModuleRLI : MonoBehaviour
                                     routeStart[i] = LadderList[i + 1].start.transform.position;
                                     routeInfos[i] = new routeInfo();
                                     routeInfos[i].Reset(routeStart[i]);
-                                }12312321321
+                                }
 
                                 LadderRightEndPositionList.Clear();
                                 break;
@@ -500,7 +524,7 @@ public class MissileModuleRLI : MonoBehaviour
                     }
                 }
 
-                Debug.Log("Selected : " + bossPatternName);
+                //Debug.Log("Selected : " + bossPatternName);
                 //Debug.Log("missile Ea : " + missileEa);
                 //Debug.Log("missile stack : " + missileSaveStack);
 
@@ -529,7 +553,7 @@ public class MissileModuleRLI : MonoBehaviour
     {
         if (missileLaunchStack >= missileSaveStack)
         {
-            Debug.Log("Shuffle");
+            //Debug.Log("Shuffle");
             bossPatternState = BossPatternState.Cooldown;
             missileLaunchStack = 0;
             attackSetRoute = false;
@@ -537,7 +561,7 @@ public class MissileModuleRLI : MonoBehaviour
 
             if (bossPatternName == BossPatternName.EditRoute)
             {
-                Debug.Log("ForceMode");
+                //Debug.Log("ForceMode");
                 attackForceMode = true;
             }
             if (bossPatternName == BossPatternName.Attack)
@@ -612,8 +636,9 @@ public class MissileModuleRLI : MonoBehaviour
 
     private void firstLaunchLadder()
     {
-        float gapY = boss.bounds.extents.y;
-        Debug.Log("Gap Y : " + Camera.main.orthographicSize);
+        //float gapY = boss.bounds.extents.y;
+        float gapY = screenWidth * 0.2f;
+        //Debug.Log("Gap Y : " + Camera.main.orthographicSize);
         LadderPositionThreeList = new List<Vector3>();
         LadderPositionFourList = new List<Vector3>();
 
@@ -647,7 +672,7 @@ public class MissileModuleRLI : MonoBehaviour
         LadderUpPosition = this.transform.parent.position;
         LadderUpPosition.y -= gapY;
 
-        LadderDownPosition = player.position;
+        LadderDownPosition = player.transform.position;
         LadderDownPosition.y += gapY;
 
         LadderList[0].ladder.transform.position = LadderUpPosition;
@@ -716,7 +741,7 @@ public class MissileModuleRLI : MonoBehaviour
                     firstLaunchPattern = false;
 
                     // Debug Only
-                    debugPlayer.InitRLI(true, LadderPositionThreeList);
+                    player.InitRLI(true, LadderPositionThreeList);
                 }
                 else
                 {
@@ -781,7 +806,7 @@ public class MissileModuleRLI : MonoBehaviour
 
                     cooldownTimerCheck = cooldownTimer - 1.0f;
 
-                    debugPlayer.InitRLI(true, LadderPositionThreeList);
+                    player.InitRLI(true, LadderPositionThreeList);
                     QuitShotMissile();
 
                     //PatternAllStop();
@@ -845,7 +870,7 @@ public class MissileModuleRLI : MonoBehaviour
                     firstLaunchPattern = false;
                     cooldownTimerCheck = cooldownTimer - 1.0f;
 
-                    debugPlayer.InitRLI(true, LadderPositionFourList);
+                    player.InitRLI(true, LadderPositionFourList);
                 }
                 else
                 {
@@ -914,7 +939,7 @@ public class MissileModuleRLI : MonoBehaviour
 
                     QuitShotMissile();
 
-                    debugPlayer.InitRLI(true, LadderPositionFourList);
+                    player.InitRLI(true, LadderPositionFourList);
                     //PatternAllStop();
                 }
 
@@ -933,7 +958,7 @@ public class MissileModuleRLI : MonoBehaviour
                 MakeRoutes(4);
                 break;
             default:
-                Debug.LogError("LadderState is not valid");
+                //Debug.LogError("LadderState is not valid");
                 break;
         }
     }
@@ -961,13 +986,14 @@ public class MissileModuleRLI : MonoBehaviour
                 QuitShotMissile();
                 routeLaunchedEa = 0;
                 cooldownTimerCheck = cooldownTimer - 1.0f;
+                //Debug.Log("Connected Ladder 2 : " + destroyAllRoute.GetInvocationList().Length);
                 //PatternAllStop();
                 return;
             }
 
             if (routeProcess >= 1.0f)
             {
-                Debug.Log("Quit!");
+                //Debug.Log("Quit!");
                 routeProcess = 0;
                 missileLaunchStack = missileSaveStack;
                 cooldownTimerCheck = cooldownTimer - 1.0f;
@@ -1026,7 +1052,7 @@ public class MissileModuleRLI : MonoBehaviour
                         break;
 
                     default:
-                        Debug.LogError("Somethings wrong...");
+                        //Debug.LogError("Somethings wrong...");
                         break;
                 }
 
@@ -1060,7 +1086,7 @@ public class MissileModuleRLI : MonoBehaviour
                         break;
 
                     default:
-                        Debug.LogError("Somethings wrong . . . .");
+                        //Debug.LogError("Somethings wrong . . . .");
                         break;
                 }
 
@@ -1175,7 +1201,7 @@ public class MissileModuleRLI : MonoBehaviour
                             break;
 
                         default:
-                            Debug.LogError("Somethings wrong...");
+                            //Debug.LogError("Somethings wrong...");
                             break;
                     }
 
@@ -1217,7 +1243,7 @@ public class MissileModuleRLI : MonoBehaviour
                             break;
 
                         default:
-                            Debug.LogError("Somethings wrong . . . .");
+                            //Debug.LogError("Somethings wrong . . . .");
                             break;
                     }
 
@@ -1251,7 +1277,7 @@ public class MissileModuleRLI : MonoBehaviour
                         break;
 
                     default:
-                        Debug.LogError("attackRouteMax value is 2 !");
+                        //Debug.LogError("attackRouteMax value is 2 !");
                         attackRouteMax = 2;
                         break;
                 }
@@ -1274,10 +1300,14 @@ public class MissileModuleRLI : MonoBehaviour
                 shotTimer = 0.5f;
             }
             // 공격 패턴별 제작
+            // Boss Turn
             else
             {
 
                 int positionIndex = Random.Range(0, attackLadderIndex.Count);
+
+                RotateBossToLadder(positionIndex);
+
                 RLIMissile missile = Instantiate(RLIMissilePrefab,
                     LadderList[positionIndex].start.transform.position,
                     Quaternion.Euler(0, 0, 0)).GetComponent<RLIMissile>();
@@ -1285,6 +1315,13 @@ public class MissileModuleRLI : MonoBehaviour
                 missile.SetMissileInfo
                     (LadderList[positionIndex].start.transform.position,
                     Vector3.down, missileSpeed);
+
+                if (Random.Range(0, 100) < 10)
+                {
+                    if (player != null)
+                        player.ActivateGetItem(6);
+                }
+                SoundManager.Instance.ShortSpeaker(SoundManager.Speaker.Center, soundRLIMissile);
 
                 //Debug.Log("Stock : " + attackLadderIndex.Count + " // position : " + positionIndex);
 
@@ -1302,7 +1339,7 @@ public class MissileModuleRLI : MonoBehaviour
             shotTimer = 0.5f;
             for (int i = 0; i < LadderList.Count; i++)
             {
-                if (debugPlayer.transform.position.x == LadderList[i].end.transform.position.x)
+                if (player.transform.position.x == LadderList[i].end.transform.position.x)
                 {
                     RLIMissile missile = Instantiate(RLIMissilePrefab,
                         LadderList[i].end.transform.position,
@@ -1313,6 +1350,8 @@ public class MissileModuleRLI : MonoBehaviour
                         Vector3.up, missileSpeed);
 
                     missile.tag = "PlayerMissile";
+
+                    SoundManager.Instance.ShortSpeaker(SoundManager.Speaker.Center, soundRLIMissile);
 
                     // Last Missile
                     if (missileLaunchStack == missileSaveStack - 1)
@@ -1328,8 +1367,62 @@ public class MissileModuleRLI : MonoBehaviour
         }
     }
 
+    // When Missile Shot from boss, Rotate boss' eulerRotation this object to target ladder
+    Quaternion bossTargetRotation = Quaternion.identity;
+    Quaternion bossOriginalRotation = Quaternion.identity;
+    float bossRotateProcess = 0;
+    float bossRotateSpeed = 5.0f;
+    private void RotateBossToLadder(int attackIndex)
+    {
+        bossOriginalRotation = boss.transform.rotation;
+        bossTargetRotation = 
+            Quaternion.FromToRotation(Vector3.up, 
+             boss.transform.position - LadderList[attackIndex].start.transform.position);
+        StartCoroutine(CoroutineRotateToLadder());
+    }
+    IEnumerator CoroutineRotateToLadder()
+    {
+        while (true)
+        {
+            bossRotateProcess += Time.deltaTime * bossRotateSpeed;
+            boss.transform.rotation =
+                Quaternion.Lerp(bossOriginalRotation, bossTargetRotation, bossRotateProcess);
+            if (bossRotateProcess >= 1.0f)
+            {
+                bossRotateProcess = 0;
+                StopCoroutine(CoroutineRotateToLadder());
+                yield break;
+            }
+            yield return null;
+        }
+    }
+    private void RotateBossToDefault()
+    {
+        bossOriginalRotation = boss.transform.rotation;
+        bossTargetRotation = Quaternion.identity;
+        StartCoroutine(CoroutineRotateToLadder());
+    }
+    IEnumerator CoroutineRotateToDefault()
+    {
+        while (true)
+        {
+            bossRotateProcess += Time.deltaTime * bossRotateSpeed;
+            boss.transform.rotation =
+                Quaternion.Lerp(bossOriginalRotation, bossTargetRotation, bossRotateProcess);
+            if (bossRotateProcess >= 1.0f)
+            {
+                bossRotateProcess = 0;
+                StopCoroutine(CoroutineRotateToDefault());
+                yield break;
+            }
+            yield return null;
+        }
+    }
+
+
     public void DestroyLastBullet()
     {
+        RotateBossToDefault();
         cooldownTimerCheck = cooldownTimer - 1.0f; 
     }
 
@@ -1345,6 +1438,8 @@ public class MissileModuleRLI : MonoBehaviour
 
     private void OnDestroy()
     {
-        debugPlayer.InitRLI(false);
+        //debugPlayer.InitRLI(false);
+        ClearDestroyAllRouteInvoke();
+        player.InitRLI(false);   
     }
 }

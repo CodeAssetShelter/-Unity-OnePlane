@@ -16,6 +16,14 @@ public class Planes : MonoBehaviour
         [TextArea]
         public string detail;
         public int price;
+
+        [Header("- Plane Options")]
+        [Range(1, 3)]
+        public int life = 1;
+        [Range(3, 5)]
+        public int itemSlot = 3;
+        [Range(5, 15)]
+        public float shield = 5;
     }
 
     public Sprite purchaseSprite;

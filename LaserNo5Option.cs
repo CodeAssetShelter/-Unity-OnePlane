@@ -362,7 +362,7 @@ public class LaserNo5Option : MonoBehaviour
     {
         this.gameObject.SetActive(false);
         this.transform.position = parentScript.transform.position;
-        parentScript.CheckAllOptionsDestroyed();
+        //parentScript.CheckAllOptionsDestroyed();
     }
     private void OnTriggerEnter2D(Collider2D collision)
     {

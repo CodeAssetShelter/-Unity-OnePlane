@@ -15,6 +15,20 @@ public class RLIMissile : MonoBehaviour
     private GameObject metObject = null;
 
     private MissileModuleRLI rliParent = null;
+    public GameObject missileExplosion;
+
+
+    private void OnDestroyAllObject()
+    {
+        Destroy(this.gameObject);
+    }
+    private void OnEnable()
+    {
+        GameManager.onDestroyAllObject += OnDestroyAllObject;
+        GameManager.onPlayerDie += OnPlayerDie;
+        metObject = PublicValueStorage.Instance.GetPlayer();
+    }
+
     // Update is called once per frame
     void Update()
     {
@@ -68,7 +82,13 @@ public class RLIMissile : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
+        //Debug.Log("Collision tag : " + collision.tag);
         //Debug.Log("tag : " + collision.name + " //// " + metObject);
+        if (metObject == null)
+        {
+            //Debug.Log("MeT NULL");
+            return;
+        }
         if (metObject == collision.transform.parent.gameObject)
         {
             //Debug.Log("Same");
@@ -105,15 +125,24 @@ public class RLIMissile : MonoBehaviour
 
         if (collision.tag == "Player" || collision.tag == "BOSS")
         {
+            Instantiate(missileExplosion, this.transform.position, Quaternion.identity);
+            PublicValueStorage.Instance.AddMissileScore();
             Destroy(this.gameObject);
         }
     }
 
+    private void OnPlayerDie()
+    {
+        Destroy(this.gameObject);
+    }
+
     private void OnDestroy()
     {
+        GameManager.onPlayerDie -= OnPlayerDie;
+        GameManager.onDestroyAllObject -= OnDestroyAllObject;
         if (rliParent != null)
         {
-            Debug.Log("I'm Last bullet!");
+            //Debug.Log("I'm Last bullet!");
             rliParent.DestroyLastBullet();
         }
     }

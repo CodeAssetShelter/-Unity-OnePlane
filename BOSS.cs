@@ -4,6 +4,11 @@ using UnityEngine;
 
 public class BOSS : MonoBehaviour {
 
+    //public delegate void BOSSHandler();
+    //public static event BOSSHandler onGetDamaged;
+
+    System.Action onGetDamaged;
+
     public GameObject parent;
 
     private ControllerLineFall parentParam;
@@ -16,16 +21,22 @@ public class BOSS : MonoBehaviour {
     {
         BossCollider.enabled = false;
         //GameManager.onDeadByItemBomb += DeadByItemBomb;
-        parentParam = parent.GetComponent<ControllerLineFall>();
+        //parentParam = parent.GetComponent<ControllerLineFall>();
     }
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.tag == "PlayerMissile")
         {
-            parentParam.GetDamaged();
+            //parentParam.GetDamaged();
             //Destroy(parent);
+            onGetDamaged();
         }
+    }
+
+    public void SetMethodGetDamaged(System.Action getDamaged)
+    {
+        onGetDamaged = getDamaged;
     }
 
     public void SetColliderSwitch(bool enable)

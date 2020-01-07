@@ -7,6 +7,7 @@ using UnityEngine.EventSystems;
 public class ControllerPlayer : MonoBehaviour {
 
     // Debug
+    [Header("- Debug")]
     public bool invincible = false;
 
     // System
@@ -17,6 +18,7 @@ public class ControllerPlayer : MonoBehaviour {
 
 
     // Player values
+    [Header("- Player values")]
     public Pilot pilot;
     public SpriteRenderer spriteRenderer;
     public CircleCollider2D op_playerPilot;
@@ -25,15 +27,23 @@ public class ControllerPlayer : MonoBehaviour {
     private bool activePlayer = false;
     private Vector2 spawnPostion = Vector2.zero;
     private float spawnAnimSpeed = 1.0f;
-
+    public Animator playerExplosion;
     private Vector2 constPosition;
 
+    public int life = 1;
+    private int itemslot = 3;
+    private float shieldTime = 5;
 
     // Shield values
     //private bool op_playerShieldBool = false;
+    [Header("- Shield values")]
+    public float op_playerShieldMax = 5;
+    private Vector2 op_playerShieldOffSetMax = Vector2.zero;
+    private RectTransform op_playerShieldRect;
+
+    public float op_playerShieldDuration = 1f;
     private bool op_activeShield = true;
     private bool op_isShieldActive = false;
-    public float op_playerShieldDuration = 1f;
 
     private bool op_playerShieldOverheat = false;
     public float op_playerShieldOverheatStart = 0.0f;
@@ -49,8 +59,7 @@ public class ControllerPlayer : MonoBehaviour {
     [HideInInspector]
     public Vector3 op_shieldOriginalSize;
 
-    // Debug Options
-    public bool op_IsDebug = false;
+    private float newOffsetMaxY = 0.1f;
 
     // Signal from GameManager Values
     private bool GMshieldFullCharge = false;
@@ -76,6 +85,8 @@ public class ControllerPlayer : MonoBehaviour {
     private bool playerAnimationLineFallDeactive = false;
     private bool playerMovedBySlide = false;
 
+    // Item Values
+    public float damage = 1.0f;
 
 
     // RLI MoveMode
@@ -89,7 +100,7 @@ public class ControllerPlayer : MonoBehaviour {
     private bool moveModeLeftMoving = false;
     private bool moveModeRLI = false;
     Vector2 moveModeForScreenSize;
-
+    Color playerColor;
 
     // Use this for initialization
     void Start () {
@@ -99,9 +110,8 @@ public class ControllerPlayer : MonoBehaviour {
         //op_playerPilot = this.transform.GetChild(1).GetComponent<CircleCollider2D>();
 
         constPosition = PublicValueStorage.Instance.GetPlayerConstPosition();
+        PublicValueStorage.Instance.SetValues(this.gameObject);
         //moveState = MoveState.LineFall;
-
-
         //List<Vector3> temp = new List<Vector3>();
         //for (int i = 0, j = -1; i < 3; i++, j++)
         //{
@@ -111,19 +121,24 @@ public class ControllerPlayer : MonoBehaviour {
         //}
 
         //InitRLI(true, temp);
+
+        playerColor = spriteRenderer.color;
     }
 
     // Update is called once per frame
     void Update () {
 
-        OP_PlaneMove();
-        if (activePlayer == false)
+        if (life > 0)
         {
-            SpawnAnimation();
-        }
-        if (activePlayer == true)
-        {
-            OP_PlayerRunning();
+            OP_PlaneMove();
+            if (activePlayer == false)
+            {
+                SpawnAnimation();
+            }
+            if (activePlayer == true)
+            {
+                OP_PlayerRunning();
+            }
         }
 	}
 
@@ -183,12 +198,11 @@ public class ControllerPlayer : MonoBehaviour {
         //    OP_PlaneMove();
         //}
 
-
         // When Player state in Overheat
         if (op_playerShieldOverheat == true)
         {
             // When Player state return normal
-            if (op_playerShieldGauge.value >= op_playerShieldOverheatDelay)
+            if (op_playerShieldOverheatTimer >= op_playerShieldOverheatDelay)
             {
                 op_playerShieldOverheatTimer = 0;
                 op_playerShieldOverheat = false;
@@ -204,16 +218,18 @@ public class ControllerPlayer : MonoBehaviour {
                 // Switching shield
                 if (Input.GetMouseButtonDown(0))
                 {
-                    
+                    //Debug.Log(Input.GetMouseButtonDown(0));
                 }
                 if (Input.GetMouseButtonUp(0))
                 {
+                    //Debug.Log(Input.GetMouseButtonDown(0));
                 }
 
                 if ((Input.touchCount >= 1 || Input.GetMouseButton(0)) &&
                     (EventSystem.current.IsPointerOverGameObject() == false &&
                     EventSystem.current.IsPointerOverGameObject(0) == false))
                 {
+                    //Debug.Log(Input.GetMouseButtonDown(0));
                     OP_ShieldActive(true);
                 }
                 else
@@ -259,7 +275,7 @@ public class ControllerPlayer : MonoBehaviour {
                 break;
 
             default:
-                Debug.LogError(this.name + " : OP_PlaneMove has a error.");
+                //Debug.LogError(this.name + " : OP_PlaneMove has a error.");
                 break;
         }
 
@@ -291,12 +307,12 @@ public class ControllerPlayer : MonoBehaviour {
             {
                 moveModeRLIPosList = new List<Vector3>();
                 moveModeRLIPosList.Add(Vector3.zero);
-                Debug.Log("null");
+                //Debug.Log("null");
             }
             else
             {
                 moveModeRLIPosList = new List<Vector3>(ladderList);
-                Debug.Log("not null");
+                //Debug.Log("not null");
             }
 
             Vector3 p = this.transform.position;
@@ -313,9 +329,11 @@ public class ControllerPlayer : MonoBehaviour {
             moveModeFirstMyPosition = this.transform.position;
 
             moveModeForScreenSize = PublicValueStorage.Instance.GetScreenSize();
-            Debug.Log("Init MOVEMODE RLI");
-            Debug.Log("player idx : " + moveModePlayerLocationIndex);
-            Debug.Log("count : " + moveModeRLIPosList.Count);
+           //Debug.Log("Init MOVEMODE RLI");
+            //Debug.Log("player idx : " + moveModePlayerLocationIndex);
+            //Debug.Log("count : " + moveModeRLIPosList.Count);
+
+            OP_ShieldActive(false);
 
         }
         else
@@ -342,7 +360,6 @@ public class ControllerPlayer : MonoBehaviour {
                     }
                     if (Input.GetMouseButton(0))
                     {
-                        Debug.Log("IDX : " + moveModePlayerLocationIndex);
                         //Debug.Log("mPos : " + moveModeForScreenSize.x);
 
                         // RIGHT MOVE
@@ -353,7 +370,6 @@ public class ControllerPlayer : MonoBehaviour {
                             {
                                 moveModeNowMoving = true;
                                 moveModeLeftMoving = false;
-                                Debug.Log("Right!");
                             }
                             //Debug.Log(lineFallPlayerLocation);
                         }
@@ -365,7 +381,6 @@ public class ControllerPlayer : MonoBehaviour {
                             {
                                 moveModeNowMoving = true;
                                 moveModeLeftMoving = true;
-                                Debug.Log("Left!");
                             }
                             //Debug.Log(lineFallPlayerLocation);
                         }
@@ -414,7 +429,7 @@ public class ControllerPlayer : MonoBehaviour {
 
                     moveModeRLI = false;
                     moveModeRLIFirstInit = true;
-                    Debug.Log("Escape");
+                    //Debug.Log("Escape");
                     return;
                 }
                 moveSpeedProcess += Time.deltaTime * moveSpeedToNormalPos;
@@ -447,10 +462,11 @@ public class ControllerPlayer : MonoBehaviour {
         playerMovedInLineFall = active;
         op_isShieldActive = active;
         op_activeShield = !active;
+        OP_ShieldActive(false);
+
         if (active == true)
         {
             moveState = MoveState.LineFall;
-            Debug.Log("init");
         }
         else
         {
@@ -557,7 +573,7 @@ public class ControllerPlayer : MonoBehaviour {
                     moveSpeedProcess = 0;
                     playerAnimationLineFallDeactive = false;
                     moveState = MoveState.Normal;
-                    Debug.Log("Escape");
+                    //Debug.Log("Escape");
                     return;
                 }
                 moveSpeedProcess += Time.deltaTime * moveSpeedToNormalPos;
@@ -620,9 +636,17 @@ public class ControllerPlayer : MonoBehaviour {
                 op_shieldOriginalSize = op_playerShield.transform.localScale;
                 op_playerShieldGauge = GameObject.FindGameObjectWithTag("PlayerShieldGauge").GetComponent<Slider>();
                 op_playerShieldGauge.value = op_playerShieldGauge.maxValue;
+                op_playerShieldMax = op_playerShieldGauge.maxValue;
+                op_playerShieldRect = op_playerShieldGauge.GetComponent<RectTransform>();
+                op_playerShieldOffSetMax = op_playerShieldRect.offsetMax;
+
+                newOffsetMaxY =
+                    (op_playerShieldRect.offsetMin.y + op_playerShieldRect.offsetMax.y)
+                    * 0.002f;
 
                 op_CallbackGameStart();
-               
+                op_playerShieldGauge.maxValue = this.shieldTime;
+                op_playerShieldGauge.value = this.shieldTime;
                 return;
             }
             this.gameObject.transform.Translate(0, spawnAnimSpeed * Time.deltaTime, 0);
@@ -645,22 +669,28 @@ public class ControllerPlayer : MonoBehaviour {
         // Shield is working
         if (active == true)
         {
-            OP_ShieldUse(active);
-
             if (op_playerShieldGauge.value <= op_playerShieldOverheatStart)
             {
                 op_playerShieldOverheat = true;
-                OP_ShieldActive(false);
                 UICanvas.Instance.OP_PrintOverheat(true);
+                OP_ShieldUse(false);
+                op_playerShield.gameObject.SetActive(false);
                 return;
             }
+            else
+            {
+                OP_ShieldUse(active);
+                op_playerShield.gameObject.SetActive(true);
+            }
+
         }
         else // active == false
-        {
+        { 
             OP_ShieldUse(active);
-            UICanvas.Instance.OP_PrintOverheat(false);
+            if(UICanvas.Instance != null)
+                UICanvas.Instance.OP_PrintOverheat(false);
+            op_playerShield.gameObject.SetActive(active);
         }
-        op_playerShield.gameObject.SetActive(active);
     }
 
     /// <summary>
@@ -670,6 +700,7 @@ public class ControllerPlayer : MonoBehaviour {
     private void OP_ShieldUse(bool active)
     {
         op_isShieldActive = active;
+        pilot.isShieldActive = active;
         if (active == true) // Use
         {
             if(GMshieldFullCharge == true)
@@ -678,15 +709,33 @@ public class ControllerPlayer : MonoBehaviour {
             }
             OP_SetShieldColor(true);
             op_playerShieldGauge.value =
-                Mathf.MoveTowards(op_playerShieldGauge.value, op_playerShieldGauge.minValue, Time.deltaTime * op_playerShieldDuration);
+                Mathf.MoveTowards(op_playerShieldGauge.value, op_playerShieldGauge.minValue, Time.deltaTime);
         }
         else // Unuse
         {
+            
+            // If shield Guage is bigger than maxValue, shield Value set equal maxValue;
+            if (op_playerShieldGauge.value >= op_playerShieldGauge.maxValue)
+            {
+                op_playerShieldGauge.value = op_playerShieldGauge.maxValue;
+                return;
+            }
+
             OP_SetShieldColor(false);
             op_playerShieldGauge.value =
                 Mathf.MoveTowards(op_playerShieldGauge.value, op_playerShieldGauge.maxValue, Time.deltaTime * op_playerShieldDuration);
         }
     }
+
+    public void OP_DamageToPlayerShield(float percent)
+    {
+        op_playerShieldGauge.value -= op_playerShieldGauge.maxValue * 0.01f * percent;
+        if (op_playerShieldGauge.value <= (Time.deltaTime * 2.0f))
+        {
+            op_playerShieldGauge.value = Time.deltaTime * 2.0f;
+        }
+    }
+
 
     /// <summary>
     /// 1/11 여기까지 함
@@ -695,6 +744,8 @@ public class ControllerPlayer : MonoBehaviour {
     /// <param name="active"></param>
     private void OP_SetShieldColor(bool active)
     {
+        if (op_playerShieldGauge == null) return;
+
             op_playerShieldColor.disabledColor = Color.Lerp(Color.red, Color.green, op_playerShieldGauge.value / op_playerShieldGauge.maxValue);
             op_playerShieldGauge.colors = op_playerShieldColor;
     }
@@ -709,11 +760,17 @@ public class ControllerPlayer : MonoBehaviour {
     {
         op_playerShield.gameObject.transform.localScale = multiply;
     }
+
     // 190227 LifeBalance
     // Use Item Effects
     public void OP_ShieldRecovery(float value)
     {
-        op_playerShieldGauge.value += value;
+        if ((op_playerShieldGauge.value + value) >= op_playerShieldGauge.maxValue)
+            op_playerShieldGauge.value = op_playerShieldGauge.maxValue;
+        else
+        {
+            op_playerShieldGauge.value += value;
+        }
     }
 
     // 190227 LifeBalance
@@ -724,16 +781,105 @@ public class ControllerPlayer : MonoBehaviour {
         GMshieldFullCharge = active;
     }
 
+
+    public void OP_PowerBooster(float value)
+    {
+        op_playerShieldDuration = value;
+
+    }
+
+    public void OP_PowerBoosterDamage(float value)
+    {
+        damage = value;
+    }
+
     // 190605 LifeBalance
     // Mode = 1 is Dead by LineFallSquare Attack
+    bool playerDiedAlready = false;
     public void ActivatePlayerDie(int mode = 0)
     {
-        if (op_isShieldActive == false || mode == 1)
+        if (invincible == false)
         {
-            op_CallbackPlayerDie();
-            Destroy(this.gameObject);
+            if (life > 0)
+            {
+                life--;
+                invincible = true;
+                UICanvas.Instance.DisableLifeBlock(1);
+                StartCoroutine(CoroutineInvincible());
+            }
+        }
+        if (life <= 0)
+        {
+            life = 0;
+            if (op_isShieldActive == false || mode == 1)
+            {
+                if (playerDiedAlready == false)
+                {
+                    playerDiedAlready = true;
+
+                    OP_ShieldUse(false);
+                    GameObject animatorTemp = Instantiate(playerExplosion.gameObject, this.transform.position, Quaternion.identity);
+                    playerExplosion = animatorTemp.GetComponent<Animator>();
+                    playerExplosion.gameObject.SetActive(true);
+                    StartCoroutine(CoroutinePlayerDie());
+                }
+            }
+            if (mode == 0)
+            {
+                if (playerDiedAlready == false)
+                {
+                    playerDiedAlready = true;
+                    OP_ShieldUse(false);
+                    GameObject animatorTemp = Instantiate(playerExplosion.gameObject, this.transform.position, Quaternion.identity);
+                    playerExplosion = animatorTemp.GetComponent<Animator>();
+                    playerExplosion.gameObject.SetActive(true);
+                    StartCoroutine(CoroutinePlayerDie());
+                }
+            }
         }
     }
+    public float invincibleTime = 3.0f;
+    private float invincibleTimer = 0;
+    IEnumerator CoroutineInvincible()
+    {
+        while (true)
+        {
+            invincibleTimer += Time.deltaTime;
+
+            if (playerColor.a == 0) playerColor.a = 1;
+            else playerColor.a = 0;
+            spriteRenderer.color = playerColor;
+
+            if (invincibleTimer > invincibleTime)
+            {
+                invincibleTimer = 0;
+                invincible = false;
+                playerColor.a = 1;
+                spriteRenderer.color = playerColor;
+                yield break;
+            }
+            yield return null;
+        }
+    }
+    bool playerDie = false;
+    IEnumerator CoroutinePlayerDie()
+    {
+        while (true)
+        {
+            if (playerExplosion.GetCurrentAnimatorStateInfo(0).normalizedTime >= 0.56f)
+            {
+                if (playerDie == false)
+                {
+                    playerDie = true;
+                    op_CallbackPlayerDie();
+                    Destroy(this.gameObject);
+                    yield break;
+                }
+            }
+            yield return null;
+        }
+    }
+
 
     public void ActivateGetItem(int number)
     {
@@ -752,5 +898,63 @@ public class ControllerPlayer : MonoBehaviour {
     public void SetPlayerSprite(Sprite sprite)
     {
         spriteRenderer.sprite = sprite;
+    }
+
+    public void SetPlayerOptions(Sprite sprite, int itemslot, int life, float shieldTime)
+    {
+        spriteRenderer.sprite = sprite;
+        this.itemslot = itemslot;
+        this.life = life;
+        this.shieldTime = shieldTime;
+    }
+
+    private void OnDestroy()
+    {
+        if (op_playerShieldGauge != null)
+            op_playerShieldGauge.maxValue = 5.0f;
+    }
+
+
+    //
+    //
+    //
+    // Triggered by Boss
+    //
+    //
+    //
+
+    public void DamageToShieldForLineFallMissile()
+    {
+        if (op_playerShieldGauge.maxValue >= 0.8f)
+        {
+            op_playerShieldGauge.maxValue -= 0.01f;
+            op_playerShieldRect.offsetMax += new Vector2(0, newOffsetMaxY);
+        }
+    }
+
+    float restoreProcess = 0;
+    Vector2 shieldNerfOffSet;
+    public void RestoreShield()
+    {
+        shieldNerfOffSet = op_playerShieldRect.offsetMax;
+        op_playerShieldGauge.maxValue = op_playerShieldMax;
+        StartCoroutine(RestoreShieldGuage());
+    }
+    IEnumerator RestoreShieldGuage()
+    {
+        while(true)
+        {
+            if (restoreProcess >= 1.0f)
+            {
+                restoreProcess = 0;
+                StopCoroutine(RestoreShieldGuage());
+                yield break;
+            }
+            restoreProcess += 2.0f * Time.deltaTime;
+            op_playerShieldRect.offsetMax =
+                Vector2.Lerp(shieldNerfOffSet,
+                             op_playerShieldOffSetMax, restoreProcess);
+            yield return null;
+        }
     }
 }

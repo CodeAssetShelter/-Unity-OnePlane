@@ -13,10 +13,22 @@ public class CreateBossModule : MonoBehaviour
     [SerializeField]
     private GameObject[] bossPrefabs;
 
+
+    public int alwaysThisBoss = 0;
     public void CreateBoss(float screenWidth, float screenHeight, GameObject player, float bossHp, System.Action<GameObject> BossDie)
     {
         int selectBoss = Random.Range(0, bossPrefabs.Length);
-        selectBoss = 1;
+
+        if (alwaysThisBoss > bossPrefabs.Length - 1)
+        {
+
+        }
+        else
+        {
+            selectBoss = alwaysThisBoss;
+            //Debug.Log("Boss");
+        }
+
         switch (selectBoss)
         {
             case 0: // Normal Boss (ControllerBoss.cs)
@@ -31,6 +43,9 @@ public class CreateBossModule : MonoBehaviour
                 controllerBOSS.SetBossData(bossHp);
                 controllerBOSS.SetCallback(BossDie.Invoke);
 
+                SoundManager.Instance.BgmSpeaker
+                    (SoundManager.BGM.Boss, SoundManager.State.Play, 
+                     controllerBOSS.bgmClip);
                 break;
 
             case 1: // LineFall (ControllerLineFall.cs)
@@ -44,6 +59,33 @@ public class CreateBossModule : MonoBehaviour
                 controllerLineFall.bossMissileModule.InitBossMissileModule(screenHeight, screenWidth, player);
                 controllerLineFall.SetBossData(bossHp);
                 controllerLineFall.SetCallback(BossDie.Invoke);
+
+                SoundManager.Instance.BgmSpeaker
+                    (SoundManager.BGM.Boss, SoundManager.State.Play,
+                    controllerLineFall.bgmClip);
+                break;
+
+            case 2: // Rope Ladder Illuminator (ControllerRLI.cs)
+                GameObject tempBossThree = Instantiate(bossPrefabs[selectBoss], new Vector3(0, screenHeight * 0.75f, 0), Quaternion.Euler(0, 0, 0));
+                ControllerRLI controllerRLI;
+
+                PublicValueStorage.Instance.SetBossHp(bossHp);
+
+                controllerRLI = tempBossThree.GetComponent<ControllerRLI>();
+
+                controllerRLI.bossMissileModule.InitBossMissileModule(screenHeight, screenWidth, player);
+                controllerRLI.SetBossData(bossHp);
+                controllerRLI.SetCallback(BossDie.Invoke);
+
+                SoundManager.Instance.BgmSpeaker
+                    (SoundManager.BGM.Boss, SoundManager.State.Play,
+                    controllerRLI.bgmClip);
+                break;
+
+            case 3:
+                GameObject tempBossFour = Instantiate(bossPrefabs[selectBoss], new Vector3(0, screenHeight * 0.75f, 0), Quaternion.Euler(0, 0, 0));
+                tempBossFour.SetActive(true);
+                PublicValueStorage.Instance.SetBossHp(bossHp);
                 break;
 
             default:

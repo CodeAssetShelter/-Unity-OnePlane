@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Reflection;
 
 /// <summary>
 /// This Script will replace GameManager.cs' Intances
@@ -19,7 +20,7 @@ public class PublicValueStorage : MonoBehaviour
 
                 if (_instance == null)
                 {
-                    Debug.LogError("No Active GameManager!");
+                    //Debug.LogError("No Active GameManager!");
                 }
             }
 
@@ -57,7 +58,12 @@ public class PublicValueStorage : MonoBehaviour
     private float bossHp;
     private float attackSpeedRivision = 1.0f;
 
+    private Vector2 bossSpawnPosition = Vector3.zero;
+    private Transform bossTransform;
+
     public Canvas canvas;
+    [HideInInspector]
+    public GameManager.GameState gameState;
 
     void Update()
     {
@@ -73,10 +79,21 @@ public class PublicValueStorage : MonoBehaviour
     }
 
 
+    public void SetGameState(GameManager.GameState gameState)
+    {
+        this.gameState = gameState;
+    }
+    public GameManager.GameState GetGameState()
+    {
+        return this.gameState;
+    }
+
     public void SetValues(GameObject player)
     {
         this.player = player;
         controllerPlayer = this.player.GetComponent<ControllerPlayer>();
+
+        //Debug.Log("Set Player Info ! ");
     }
 
     public void SetPlayerConstPosition(GameObject playerPositionPrefab)
@@ -165,6 +182,61 @@ public class PublicValueStorage : MonoBehaviour
     //
     //
 
+    public void SetBossTransform(Transform bossTransform)
+    {
+        if (bossTransform == null)
+        {
+            this.bossTransform = null;
+            this.bossChildren.Clear();
+        }
+        this.bossTransform = bossTransform;
+        SetBossChildren(this.bossTransform);
+    }
+    public Transform GetBossTransform()
+    {
+        return bossTransform;
+    }
+
+
+    private List<GameObject> bossChildren = new List<GameObject>();
+    public void SetBossChildren(Transform bossRoot)
+    {
+        if (bossRoot == null) return;
+
+        bossChildren = new List<GameObject>();
+        for (int i = 0; i < bossRoot.childCount; i++)
+        {
+            bossChildren.Add(bossRoot.GetChild(i).gameObject);
+        }
+    }
+
+    public GameObject GetBossChildForAttacked()
+    {
+        //Debug.Log("bossChildren Count : " + bossChildren.Count);
+        if (bossChildren == null)
+        {
+            return null;
+        }
+
+        if (bossChildren.Exists(temp => temp.activeSelf == true) == false)
+        {
+            //Debug.Log(nameof(bossChildren) + " is EMPTY");
+            return null;
+        }
+
+        List<int> alive = new List<int>();
+        for (int i = 0; i < bossChildren.Count; i++)
+        {
+            if (bossChildren[i].activeSelf == true)
+            {
+                alive.Add(i);
+            }
+        }
+
+        return bossChildren[alive[Random.Range(0, alive.Count)]];
+    }
+
+
     public void SetBossHpBar(Slider hpBar)
     {
         bossHpBar = hpBar;
@@ -192,8 +264,14 @@ public class PublicValueStorage : MonoBehaviour
         return (screenSize != Vector2.zero) ? screenSize : new Vector2(0, 3.0f);
     }
 
+    public Vector3 GetBossSpawnPosition()
+    {
+        return new Vector3(0, GetScreenSize().y * 0.25f, 0);
+    }
+
     public ControllerPlayer GetPlayerComponent()
     {
+        if (controllerPlayer == null) return null;
         return controllerPlayer;
     }
 

@@ -30,13 +30,13 @@ public class LaserStart : MonoBehaviour
             }
             if (collision.tag == "PlayerShield")
             {
-                if (this.tag == "ReflectLaser")
+                if (this.tag == "PlayerReflectLaser")
                 {
                     // Player shot Laser
                     if (isTouchPlayer == false)
                     {
                         isTouchPlayer = true;
-                        myParent.activateStartLaser = false;
+                        //myParent.activateStartLaser = false;
                         //myParent.activateEndLaser = true;
                         GameObject newLaser = Instantiate(this.transform.parent.gameObject, this.transform.position, Quaternion.Euler(0, 0, 0));
                         Laser laserScript = newLaser.GetComponent<Laser>();

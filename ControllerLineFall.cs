@@ -6,8 +6,10 @@ using UnityEngine.UI;
 public class ControllerLineFall : MonoBehaviour
 {
 
-    // Debug
-    public GameObject player;
+    private ControllerPlayer player;
+
+    // BGM
+    public AudioClip bgmClip;
 
     // Screen Size (temporary)
     private float screenHeight;
@@ -16,12 +18,13 @@ public class ControllerLineFall : MonoBehaviour
 
     // BOSS Values
     public BOSS boss;
+    public Animator bossExplosion;
 
     // System
     public delegate void BOSSCallback(GameObject target);
     public static event BOSSCallback onBossDie;
 
-    enum EnemyState { Spawned = 0, Move, Idle, Play, StateCount }
+    enum EnemyState { Spawned = 0, Move, Idle, Play, Dead, StateCount }
     EnemyState enemyState;
 
 
@@ -45,11 +48,19 @@ public class ControllerLineFall : MonoBehaviour
 
     private Vector2 playerPos;
 
+
+    private void OnDestroyAllObject()
+    {
+        Destroy(this.gameObject);
+    }
     private void OnEnable()
     {
+        GameManager.onDestroyAllObject += OnDestroyAllObject;
         GameManager.onPlayerDie += OnPlayerDie;
         //GameManager.onDestroyAllEnemy += OnPlayerDie;
         //GameManager.onBossDie += OnBossDie;
+
+        player = PublicValueStorage.Instance.GetPlayerComponent();
 
         // for debug
         //onBossDie += GameManager.Instance.BossDie;
@@ -58,15 +69,17 @@ public class ControllerLineFall : MonoBehaviour
 
         bezierStart = this.gameObject.transform.position;
 
+        boss.SetMethodGetDamaged(GetDamaged);
 
+        SoundManager.Instance.BgmSpeaker
+            (SoundManager.BGM.Boss,
+            SoundManager.State.Play, bgmClip);
     }
 
-    private void OnBecameVisible()
-    {
-        GameManager.onDeadByItemBomb += GetDamagedByBomb;
-        //GameManager.Instance.enemyPos.Add(this.gameObject);
-        PublicValueStorage.Instance.AddEnemyPos(this.gameObject);
-    }
+    //private void OnBecameVisible()
+    //{
+    //    //GameManager.Instance.enemyPos.Add(this.gameObject);
+    //}
 
 
     // Use this for initialization
@@ -122,7 +135,9 @@ public class ControllerLineFall : MonoBehaviour
                 bezierSpeed = 0;
                 enemyState = EnemyState.Play;
                 //GameManager.Instance.enemyPos.Add(this.gameObject);
+                GameManager.onDeadByItemBomb += GetDamagedByBomb;
                 PublicValueStorage.Instance.AddEnemyPos(this.gameObject);
+        
                 boss.SetColliderSwitch(true);
 
                 // temp code
@@ -178,30 +193,73 @@ public class ControllerLineFall : MonoBehaviour
 
     public void GetDamaged()
     {
+        hp -= 1.0f * player.damage;
+        bossShieldSlider.value = hp;
+        SetBossHpBarColor();
         if (hp <= 0)
         {
             // Do Something If boss died
-            Debug.Log("Boss is dead");
+            //Debug.Log("Boss is dead");
             OnBossDie();
         }
-        bossShieldSlider.value = --hp;
-        SetBossHpBarColor();
     }
 
     public void GetDamagedByBomb()
     {
-        Debug.Log("Boss get damaged by Player's Bomb");
+        GetPercentDamaged(10);
+       //Debug.Log("Boss get damaged by Player's Bomb");
     }
 
+    public void GetPercentDamaged(float value)
+    {
+        bossShieldSlider.value -= bossShieldSlider.maxValue * 0.1f;
+        hp = bossShieldSlider.value;
+        SetBossHpBarColor();
+        //Debug.Log("Remain HP : " + hp);
+        if (hp <= 0)
+        {
+            // Do Something If boss died
+            //Debug.Log("Boss is dead");
+            OnBossDie();
+        }
+    }
     public void OnBossDie()
     {
+        enemyState = EnemyState.Dead;
         bossShieldSlider.gameObject.SetActive(false);
-        onBossDie(this.gameObject);
+        PublicValueStorage.Instance.GetPlayerComponent().RestoreShield();
+        PublicValueStorage.Instance.GetPlayerComponent().InitLineFall(false);
+
+        bossExplosion.gameObject.SetActive(true);
+        bossExplosion.GetComponent<BossExplosion>().ExplosionSoundPlay();
+        StartCoroutine(BossDie());
+        //onBossDie(this.gameObject);
     }
+    bool bossDie = false;
+    IEnumerator BossDie()
+    {
+        while (true)
+        {
+            //Debug.Log("ss : " + bossExplosion.GetCurrentAnimatorStateInfo(0).normalizedTime);
+            if (bossExplosion.GetCurrentAnimatorStateInfo(0).normalizedTime >= 1.0f)
+            {
+                bossShieldSlider.gameObject.SetActive(false);
+                if (bossDie == false)
+                {
+                    PublicValueStorage.Instance.BossDie(this.gameObject);
+                    bossDie = true;
+                }
+                yield break;
+            }
+            yield return null;
+        }
+    }
+
+
 
     public void OnPlayerDie()
     {
-        Debug.Log("Enemy Pilot Destroy to " + this.transform.position);
+        //Debug.Log("Enemy Pilot Destroy to " + this.transform.position);
         Destroy(this.gameObject);
     }
 
@@ -221,7 +279,7 @@ public class ControllerLineFall : MonoBehaviour
 
     private void OnDisable()
     {
-        
+        GameManager.onDestroyAllObject -= OnDestroyAllObject;
         GameManager.onPlayerDie -= OnPlayerDie;
         GameManager.onDestroyAllEnemy -= OnPlayerDie;
         GameManager.onDeadByItemBomb -= GetDamagedByBomb;

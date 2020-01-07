@@ -21,7 +21,7 @@ public class SaveData : MonoBehaviour
 
                 if (_instance == null)
                 {
-                    Debug.LogError("No Active SaveData!");
+                    //Debug.LogError("No Active SaveData!");
                 }
             }
 
@@ -37,7 +37,10 @@ public class SaveData : MonoBehaviour
         public Planes.GoodsInfo[] goodsInfo;
         public int credit;
         public int bestScore;
+
         // Config Data
+        public float bgmVolume = 0.2f;
+        public float effectVolume = 0.2f;
     }
 
     public Planes gamePlanes;
@@ -52,7 +55,6 @@ public class SaveData : MonoBehaviour
         FileStream file = File.Create(Application.persistentDataPath + "/OnePlane.dat");
 
         OnePlaneData data = new OnePlaneData();
-
         //data.goodsInfo = new Planes.GoodsInfo[gamePlanes.GetGoodsEa()];
         //for (int i = 0; i < gamePlanes.GetGoodsEa(); i++)
         //{
@@ -64,6 +66,9 @@ public class SaveData : MonoBehaviour
         data.credit = PublicValueStorage.Instance.RefreshCredit(0);
         data.bestScore = PublicValueStorage.Instance.GetBestScore();
 
+        data.bgmVolume = SoundManager.Instance.bgmVolume;
+        data.effectVolume = SoundManager.Instance.effectVolume;
+
         binary.Serialize(file, data);
 
         saveData = data;
@@ -71,7 +76,32 @@ public class SaveData : MonoBehaviour
         file.Close();
     }
 
+    public void SaveUserDataFromQuitGame(int credit, int score, float bgmVolume, float effectVolume)
+    {
+        BinaryFormatter binary = new BinaryFormatter();
+        FileStream file = File.Create(Application.persistentDataPath + "/OnePlane.dat");
 
+        OnePlaneData data = new OnePlaneData();
+        //data.goodsInfo = new Planes.GoodsInfo[gamePlanes.GetGoodsEa()];
+        //for (int i = 0; i < gamePlanes.GetGoodsEa(); i++)
+        //{
+        //    data.goodsInfo[i] = gamePlanes.goodsInfo[i];
+        //}
+
+        data.goodsInfo = gamePlanes.goodsInfo;
+
+        data.credit = credit;
+        data.bestScore = score;
+
+        data.bgmVolume = bgmVolume;
+        data.effectVolume = effectVolume;
+
+        binary.Serialize(file, data);
+
+        saveData = data;
+
+        file.Close();
+    }
 
     // 190510 LifeBalance
     // Load Area
@@ -86,7 +116,14 @@ public class SaveData : MonoBehaviour
             OnePlaneData data = (OnePlaneData)binary.Deserialize(file);
 
             this.saveData = data;
-            gamePlanes.goodsInfo = this.saveData.goodsInfo;
+            for(int i = 0; i < gamePlanes.goodsInfo.Length; i++)
+            {
+                gamePlanes.goodsInfo[i].purchased = this.saveData.goodsInfo[i].purchased;
+                gamePlanes.goodsInfo[i].selected = this.saveData.goodsInfo[i].selected;
+            }
+
+            SoundManager.Instance.SetVolume(data.bgmVolume, data.effectVolume);
+            //gamePlanes.goodsInfo = this.saveData.goodsInfo;
         }
     }
 

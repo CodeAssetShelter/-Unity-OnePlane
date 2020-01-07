@@ -4,12 +4,22 @@ using UnityEngine;
 
 public class OPCurves : MonoBehaviour {
 
-    public void Bezier2DLerp(GameObject target,Vector2 startPos, Vector2 centerPos, Vector2 endPos, float speed)
+    public void Bezier2DLerp(GameObject target, Vector2 startPos, Vector2 centerPos, Vector2 endPos, float speed)
     {
-        target.transform.position = 
+        target.transform.position =
             (Vector2.Lerp(Vector2.Lerp(startPos, centerPos, speed),
             Vector2.Lerp(centerPos, endPos, speed),
             speed));
+    }
+
+    public Vector3 GetBezier2DLerpPosition(Vector2 startPos, Vector2 centerPos, Vector2 endPos, float speed)
+    {
+        Vector3 result =
+            (Vector2.Lerp(Vector2.Lerp(startPos, centerPos, speed),
+            Vector2.Lerp(centerPos, endPos, speed),
+            speed));
+
+        return result;
     }
 
     public Vector2 SeekDirection(Vector2 start, Vector2 target)
@@ -17,6 +27,14 @@ public class OPCurves : MonoBehaviour {
         Vector2 heading = target - start;
         float distance = heading.magnitude;
         return heading / distance;
+    }
+
+    public float GetDistance(Vector2 start, Vector2 target)
+    {
+        Vector2 heading = target - start;
+        float distance = heading.magnitude;
+
+        return distance;
     }
 
     public Vector2 GetHeading(Vector2 start, Vector2 target)

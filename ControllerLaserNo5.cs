@@ -105,7 +105,7 @@ public class ControllerLaserNo5 : MonoBehaviour
             screenWidth = screenSize.x;
             screenHeight = screenSize.y;
 
-            bossMissileModule.SetScreenSize(screenHeight, screenWidth);
+            //bossMissileModule.SetScreenSize(screenHeight, screenWidth);
         }
         else
         {
@@ -113,7 +113,7 @@ public class ControllerLaserNo5 : MonoBehaviour
             screenWidth = PublicValueStorage.Instance.GetScreenSize().x;
             screenHeight = PublicValueStorage.Instance.GetScreenSize().y;
 
-            bossMissileModule.SetScreenSize(screenHeight, screenWidth);
+            //bossMissileModule.SetScreenSize(screenHeight, screenWidth);
         }
     }
 
@@ -142,7 +142,7 @@ public class ControllerLaserNo5 : MonoBehaviour
                 //GameManager.Instance.enemyPos.Add(this.gameObject);
                 PublicValueStorage.Instance.AddEnemyPos(this.gameObject);
                 boss.SetColliderSwitch(true);
-                bossMissileModule.InitBossMissileModule(screenHeight, screenWidth, PublicValueStorage.Instance.GetPlayer().transform);
+                bossMissileModule.InitBossMissileModule(screenHeight, screenWidth, PublicValueStorage.Instance.GetPlayer());
             }
             else
             {
@@ -161,12 +161,18 @@ public class ControllerLaserNo5 : MonoBehaviour
         }
         if (enemyState == EnemyState.Play)
         {
-            if (player)
-            //////////////////////////////////////////////////////
-            // 190308 LifeBalance
-            // Boss Missile Patterns
-            //////////////////////////////////////////////////////
-            bossMissileModule.LaunchMissile();
+            if (playerForRelease.gameObject)
+            {
+                //////////////////////////////////////////////////////
+                // 190308 LifeBalance
+                // Boss Missile Patterns
+                //////////////////////////////////////////////////////
+                bossMissileModule.LaunchMissile();
+            }
+            else
+            {
+                Debug.Log("is not working");
+            }
         }
     }
 

@@ -5,7 +5,11 @@ using UnityEngine;
 public class Pilot : MonoBehaviour {
 
     public GameObject player;
+    [HideInInspector]
+    public bool isShieldActive = false;
+
     private ControllerPlayer playerController;
+    private int instanceID = 0;
 
     private void Start()
     {
@@ -14,15 +18,32 @@ public class Pilot : MonoBehaviour {
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        //Debug.Log("Recognized : " + collision.tag);
         switch (collision.tag)
         {
             case "Missile":
-                playerController.ActivatePlayerDie();
+                //if (isShieldActive == false)
+                //{
+                //    playerController.ActivatePlayerDie(0);
+                //}
                 break;
 
             case "LineFallNormalMissile":
-                playerController.ActivatePlayerDie(1);
+                //if (isShieldActive == false)
+                //{
+                //    playerController.ActivatePlayerDie(1);
+                //}
+
+                break;
+
+            case "LineFallShieldBreaker":
+                if (Random.Range(0, 100) < 5) playerController.ActivateGetItem(6);
+                break;
+
+            case "LineFallSlowRailGun":
+                if (isShieldActive == false)
+                {
+                    playerController.ActivatePlayerDie(1);
+                }
                 break;
 
             case "Item":

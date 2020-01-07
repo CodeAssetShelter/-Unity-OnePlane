@@ -32,12 +32,19 @@ public class MissileModuleLineFall : MonoBehaviour
 
     // Debug Options
     public BossPatternName alwaysThisPattern;
-    public GameObject nullObject;
+    //public GameObject nullObject;
 
     // Prefabs
     public GameObject lineFallMissile;
     public GameObject lineFallMissileSquare;
     public GameObject lineFallSlowRailGun;
+
+    // Effect Sound
+    public AudioClip soundSideAndVertical;
+    public AudioClip soundLineFall;
+    public AudioClip soundSRG;
+    private AudioClip soundSendClip;
+    private SoundManager.Speaker soundSpeaker = SoundManager.Speaker.Center;
 
     // LaunchMissile
     //private int bossPatternNumber = 0;
@@ -72,6 +79,7 @@ public class MissileModuleLineFall : MonoBehaviour
     // Common Values
     private bool nowLaunching = false;
     private ControllerPlayer player;
+    private float rivisionSpeed = 1.0f;
 
     // Common Spawn Spot Values
     public List<Vector2> spawnSpotTop;
@@ -86,7 +94,7 @@ public class MissileModuleLineFall : MonoBehaviour
     public float timer = 2.0f;
     public float timerMin = 1.0f;
     public float timerMax = 5.0f;
-    private float timerChecker = 0;
+    //private float timerChecker = 0;
     public float missileTerm = 0.5f;
     public float missileTermMin = 0.1f;
     public float missileTermMax = 1.0f;
@@ -160,7 +168,7 @@ public class MissileModuleLineFall : MonoBehaviour
     {
         screenHeight = height;
         screenWidth = width;
-        Debug.Log("Get PlayerPos : " + height + " " + width);
+        //Debug.Log("Get PlayerPos : " + height + " " + width);
 
 
         bossPatternState = BossPatternState.Shuffle;
@@ -169,6 +177,7 @@ public class MissileModuleLineFall : MonoBehaviour
 
         if (spawnSpotLeft.Count == 0) CreateOptionCoord();
 
+        rivisionSpeed = PublicValueStorage.Instance.GetAddSpeedRivisionValue();
     }
 
     // 190315 LifeBalance
@@ -192,7 +201,7 @@ public class MissileModuleLineFall : MonoBehaviour
 
             bossPatternName = (BossPatternName)RandomPatternSelect();
             missileSaveStack = Random.Range(missileStackMin, missileStackMax);
-            Debug.Log("Stack is : " + missileSaveStack);
+            //Debug.Log("Stack is : " + missileSaveStack);
 
 
             if (alwaysThisPattern != BossPatternName.StateCount)
@@ -225,7 +234,7 @@ public class MissileModuleLineFall : MonoBehaviour
             }
 
 
-            Debug.Log("Selected : " + bossPatternName);
+            //Debug.Log("Selected : " + bossPatternName);
 
             bossPatternState = BossPatternState.Launch;
         }
@@ -255,7 +264,7 @@ public class MissileModuleLineFall : MonoBehaviour
     {
         if (missileLaunchStack >= missileSaveStack)
         {
-            Debug.Log("Shuffle");
+            //Debug.Log("Shuffle");
             bossPatternState = BossPatternState.Cooldown;
             missileLaunchStack = 0;
             isLineFallAlive = false;
@@ -283,7 +292,7 @@ public class MissileModuleLineFall : MonoBehaviour
                         int missileStorage = spawnSpotTop.Count;
 
 
-                        for (int i = 2; i < missileStorage; i += 2)
+                        for (int i = 0; i < missileStorage; i += 2)
                         {
                             //Debug.Log("Pattern num : " + verticalPattern);
                             Vector2 target = spawnSpotTop[i];
@@ -299,6 +308,8 @@ public class MissileModuleLineFall : MonoBehaviour
                             temp2.SetPlayerPosition(playerPos);
                         }
 
+                        SoundManager.Instance.ShortSpeaker(SoundManager.Speaker.Center, soundSideAndVertical);
+
                         break;
                     }
                 case BossPatternName.Horizon:
@@ -312,7 +323,7 @@ public class MissileModuleLineFall : MonoBehaviour
                         int missileStorage = spawnSpotLeft.Count;
 
 
-                        for (int i = 5; i < missileStorage; i += 2)
+                        for (int i = 0; i < missileStorage; i += 2)
                         {
                             if (verticalPattern == VerticalPattern.LeftToRight)
                             {
@@ -322,6 +333,8 @@ public class MissileModuleLineFall : MonoBehaviour
 
                                 spawnPosition = spawnSpotLeft[i];
 
+                                soundSendClip = soundSideAndVertical;
+                                soundSpeaker = SoundManager.Speaker.Left;
                             }
                             if (verticalPattern == VerticalPattern.RightToLeft)
                             {
@@ -331,12 +344,16 @@ public class MissileModuleLineFall : MonoBehaviour
 
                                 spawnPosition = spawnSpotRight[i];
 
+                                soundSendClip = soundSideAndVertical;
+                                soundSpeaker = SoundManager.Speaker.Right;
                             }
 
                             GameObject temp = Instantiate(lineFallMissile, spawnPosition, Quaternion.Euler(0, 0, 0));
                             LineFallMissile temp2 = temp.GetComponent<LineFallMissile>();
                             temp2.SetRoute(direction, bezierStart, bezierCenter, bezierEnd, chaseSpeed, chaseMode, this.gameObject.transform.position);
                             temp2.SetPlayerPosition(playerPos);
+
+                            SoundManager.Instance.ShortSpeaker(soundSpeaker, soundSendClip);
                         }
 
 
@@ -361,8 +378,11 @@ public class MissileModuleLineFall : MonoBehaviour
                         LineFallMissileSquare temp2 = temp.GetComponent<LineFallMissileSquare>();
 
 
-                        temp2.SetRoute(direction, (int)lineFallMissilePosition, speedLF, this.gameObject.transform.position);
+                        temp2.SetRoute(direction, (int)lineFallMissilePosition, speedLF * rivisionSpeed, this.gameObject.transform.position);
                         temp2.SetPlayerPosition(playerPos);
+
+
+                        SoundManager.Instance.ShortSpeaker(SoundManager.Speaker.Center, soundLineFall);
 
                         break;
                     }
@@ -380,77 +400,19 @@ public class MissileModuleLineFall : MonoBehaviour
                         GameObject temp = Instantiate(lineFallSlowRailGun, spawnPosition, Quaternion.Euler(0, 0, 0));
                         LineFallMissile temp2 = temp.GetComponent<LineFallMissile>();
 
-                        Debug.Log("Speed : " + speedSRG);
+                        //Debug.Log("Speed : " + speedSRG);
 
-                        temp2.SetRoute(direction, Vector2.zero, Vector2.zero, Vector2.zero, speedSRG, true, this.gameObject.transform.position);
+                        temp2.SetRoute(direction, Vector2.zero, Vector2.zero, Vector2.zero, speedSRG * rivisionSpeed, true, this.gameObject.transform.position);
                         temp2.SetPlayerPosition(playerPos);
+
+                        SoundManager.Instance.ShortSpeaker(SoundManager.Speaker.Center, soundSRG);
 
                         break;
                     }
                 default:
-                    Debug.Log("BossShotMissile Module Error!");
+                    //Debug.Log("BossShotMissile Module Error!");
                     break;
             }
-
-
-            // Missile display on Hierarchy Root
-            //Debug.Log("in create");
-            //if (bossPatternName == BossPatternName.Horizon || bossPatternName == BossPatternName.Vertical)
-            //{
-            //    int missileStorage;
-            //    if (bossPatternName == BossPatternName.Horizon) missileStorage = spawnSpotLeft.Count;
-            //    else missileStorage = spawnSpotTop.Count;
-
-
-            //    for (int i = 5; i < missileStorage; i += 2)
-            //    {
-
-            //        Vector2 spawnStart = Vector2.zero;
-            //        Debug.Log("Pattern num : " + verticalPattern);
-            //        if (verticalPattern == VerticalPattern.LeftToRight)
-            //        {
-            //            Vector2 target = spawnSpotRight[i];
-            //            target.y -= term * 3;
-            //            direction = opCurves.SeekDirection(spawnSpotLeft[i], target);
-
-            //            spawnStart = spawnSpotLeft[i];
-
-            //        }
-            //        if (verticalPattern == VerticalPattern.RightToLeft)
-            //        {
-            //            Vector2 target = spawnSpotLeft[i];
-            //            target.y -= term * 3;
-            //            direction = opCurves.SeekDirection(spawnSpotRight[i], target);
-
-            //            spawnStart = spawnSpotRight[i];
-
-            //        }
-            //        //if (bossPatternName == BossPatternName.Vertical)
-            //        //{
-            //        //    Vector2 target = spawnSpotTop[i];
-            //        //    target.y += screenHeight + (term * 3);
-            //        //    target.x += gap * 2;
-            //        //    direction = opCurves.SeekDirection(spawnSpotTop[i], target);
-
-            //        //    spawnPosition = spawnSpotTop[i];
-            //        //}
-
-            //        GameObject temp = Instantiate(bossMissile, spawnStart, Quaternion.Euler(0, 0, 0));
-            //        LineFallMissile temp2 = temp.GetComponent<LineFallMissile>();
-            //        temp2.SetRoute(direction, bezierStart, bezierCenter, bezierEnd, chaseSpeed, chaseMode, this.gameObject.transform.position, (int)bossPatternName);
-            //        temp2.SetPlayerPosition(playerPos);
-            //    }
-            //}
-            //else
-            //{
-            //    GameObject temp = Instantiate(bossMissile, spawnPosition, Quaternion.Euler(0, 0, 0));
-            //    LineFallMissile temp2 = temp.GetComponent<LineFallMissile>();
-
-            //    Debug.Log("not this");
-            //    temp2.SetRoute(direction, bezierStart, bezierCenter, bezierEnd, chaseSpeed, chaseMode, this.gameObject.transform.position, (int)bossPatternName);
-            //    temp2.SetPlayerPosition(playerPos);
-            //}
-
             shotTimerCheck = 0;
             missileLaunchStack++;
         }
@@ -461,25 +423,36 @@ public class MissileModuleLineFall : MonoBehaviour
     {
 
         term = screenWidth * 0.05f;
-        for (int i = 0; i < options; i++)
-        {
-            spawnSpotLeft.Add(new Vector2(-1 * (screenWidth * 0.6f), (screenHeight * 0.6f) - (term * i)));
-            //GameObject temp = Instantiate(nullObject, spawnSpotLeft[i], Quaternion.Euler(0, 0, 0));
-            //temp.name = "Left" + i;
-            spawnSpotRight.Add(new Vector2(screenWidth * 0.6f, (screenHeight * 0.6f) - (term * i)));
-            //temp = Instantiate(nullObject, spawnSpotRight[i], Quaternion.Euler(0, 0, 0));
-            //temp.name = "Right" + i;
 
+        if (options <= 1)
+        {
+            spawnSpotLeft.Add(new Vector2(-1 * (screenWidth * 0.6f), playerPos.y));
+            spawnSpotRight.Add(new Vector2((screenWidth * 0.6f), playerPos.y));
+            spawnSpotTop.Add(new Vector2(playerPos.x, screenHeight * 0.6f));
+        }
+        else
+        {
+            for (int i = 0; i < options; i++)
+            {
+                spawnSpotLeft.Add(new Vector2(-1 * (screenWidth * 0.6f), (screenHeight * 0.6f) - (term * i)));
+                //GameObject temp = Instantiate(nullObject, spawnSpotLeft[i], Quaternion.Euler(0, 0, 0));
+                //temp.name = "Left" + i;
+
+                spawnSpotRight.Add(new Vector2(screenWidth * 0.6f, (screenHeight * 0.6f) - (term * i)));
+                //temp = Instantiate(nullObject, spawnSpotRight[i], Quaternion.Euler(0, 0, 0));
+                //temp.name = "Right" + i;
+
+            }
+            gap = (spawnSpotRight[0].x - spawnSpotLeft[0].x) / term;
+
+            for (int i = 0; i < gap - 2; i++)
+            {
+                spawnSpotTop.Add(new Vector2((-1 * (screenWidth * 0.6f)) + (term * (i + 1)), screenHeight * 0.6f));
+                //GameObject temp = Instantiate(nullObject, spawnSpotTop[i], Quaternion.Euler(0, 0, 0));
+                //temp.name = "Top" + i;
+            }
         }
 
-        gap = (spawnSpotRight[0].x - spawnSpotLeft[0].x) / term;
-
-        for (int i = 0; i < gap - 2; i++)
-        {
-            spawnSpotTop.Add(new Vector2((-1 * (screenWidth * 0.6f)) + (term * (i + 1)), screenHeight * 0.6f));
-            //GameObject temp = Instantiate(nullObject, spawnSpotTop[i], Quaternion.Euler(0, 0, 0));
-            //temp.name = "Top" + i;
-        }
     }
 
     // 190603 LifeBalance
@@ -507,7 +480,7 @@ public class MissileModuleLineFall : MonoBehaviour
                 break;
         }
 
-        Debug.Log(result);
+        //Debug.Log(result);
 
         return result;
     }
@@ -523,8 +496,8 @@ public class MissileModuleLineFall : MonoBehaviour
         return Random.Range(0, (int)BossPatternName.StateCount);
     }
 
-    private void OnDisable()
-    {
-        player.InitLineFall(false);
-    }
+    //private void OnDisable()
+    //{
+    //    player.InitLineFall(false);
+    //}
 }

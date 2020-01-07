@@ -93,6 +93,9 @@ public class LadderRoute : MonoBehaviour
 
         positions[0].GetComponent<BoxCollider2D>().size = new Vector2(size[0], size[0]);
         positions[1].GetComponent<BoxCollider2D>().size = new Vector2(size[1], size[1]);
+
+        this.GetComponent<MeshRenderer>().sortingLayerName = "sortingLayer";
+        this.GetComponent<MeshRenderer>().sortingOrder = 2;
     }
 
     // Update is called once per frame
@@ -137,7 +140,7 @@ public class LadderRoute : MonoBehaviour
     {
         if (moveStart == true)
         {
-            Debug.Log("Now moving . . .");
+            //Debug.Log("Now moving . . .");
             return;
         }
 
@@ -161,7 +164,7 @@ public class LadderRoute : MonoBehaviour
 
         if (positions.Length <= 1)
         {
-            Debug.LogError("Ladder Route Index is lower than 2");
+            //Debug.LogError("Ladder Route Index is lower than 2");
             return;
         }
 

@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerShield : MonoBehaviour {
+    public AudioClip[] vansaSori = new AudioClip[4];
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        Debug.Log(collision.tag);
-        if (collision.tag == "Missile")
+        if(collision.tag != "Item")
         {
-            //GameManager.Instance.ScoreAdd("Missile");
-            PublicValueStorage.Instance.AddMissileScore();
+            int rand = Random.Range(0, vansaSori.Length);
+            SoundManager.Instance.ShortSpeaker(SoundManager.Speaker.Center, vansaSori[rand]);
         }
     }
 }

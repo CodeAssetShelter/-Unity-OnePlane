@@ -25,7 +25,7 @@ public class Lobby : MonoBehaviour
 
     public void DeactivateShop()
     {
-        onDeactiveShop();
+        onDeactiveShop?.Invoke();
     }
 
     public void SetCallbacks(MenuHandler ActiveGameStart, MenuHandler ActiveShop, MenuHandler DeactiveShop, MenuHandler ActiveConfig)
@@ -40,5 +40,25 @@ public class Lobby : MonoBehaviour
     public void SetCallBacksTest(MenuHandler ActiveGameStart)
     {
         onActiveGameStart = ActiveGameStart;
+    }
+
+    public void buttonDownSound()
+    {
+        SoundManager.Instance.UiSpeaker(SoundManager.UISound.Button);
+    }
+
+    public void EquipSound()
+    {
+        SoundManager.Instance.UiSpeaker(SoundManager.UISound.ChangePlane);
+    }
+
+    public void PurchaseSound()
+    {
+        SoundManager.Instance.UiSpeaker(SoundManager.UISound.Purchase);
+    }
+
+    public void PurchaseFailSound()
+    {
+        SoundManager.Instance.UiSpeaker(SoundManager.UISound.PurchaseFail);
     }
 }

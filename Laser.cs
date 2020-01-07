@@ -41,7 +41,7 @@ public class Laser : MonoBehaviour
 
     // StartLaser Timer for LaserNo5 Mode
     private float startLaserTimer = 0;
-    private float startLaserTimerCheck = 0;
+    //private float startLaserTimerCheck = 0;
 
     // EndLaser timer for RapidLaser Mode
     public float endLaserTimerMin = 0.2f;

@@ -5,7 +5,8 @@ using UnityEngine;
 public class LineFallMissile : MonoBehaviour
 {
     [HideInInspector]
-    public GameObject player;
+    public ControllerPlayer player;
+    public GameObject missileExplosion;
 
     // Etc
     //private Vector2 playerPos;
@@ -21,7 +22,7 @@ public class LineFallMissile : MonoBehaviour
     public float missileMaxSpeed = 0.0f;
     public float missileCurrentSpeed = 0.0f;
     public float missileReflectSpeed = 2.0f;
-
+    public float missileShieldBreakPercent = 3.0f;
 
     private Vector2 playerPos = Vector2.zero;
 
@@ -36,10 +37,22 @@ public class LineFallMissile : MonoBehaviour
 
     private SpriteRenderer missileColor;
 
+    private void OnDestroyAllObject()
+    {
+        Destroy(this.gameObject);
+    }
     private void OnEnable()
     {
+        GameManager.onDestroyAllObject += OnDestroyAllObject;
         GameManager.onPlayerDie += OnPlayerDie;
         GameManager.onDestroyAllEnemy += OnPlayerDie;
+        if (this.tag != "LineFallSlowRailGun")
+            GameManager.onDeadByItemBomb += OnPlayerDie;
+
+        if (this.tag == "LineFallSlowRailGun")
+        {
+            player = PublicValueStorage.Instance.GetPlayerComponent();
+        }
     }
 
     // Use this for initialization
@@ -64,6 +77,7 @@ public class LineFallMissile : MonoBehaviour
         missileMaxSpeed = chaseSpeed;
         startChase = chaseMode;
         parentPos = parentPosition;
+        //Debug.Log(missileMaxSpeed + " // " + chaseSpeed);
     }
 
     public void SetPlayerPosition(Vector2 playerPosition)
@@ -125,6 +139,8 @@ public class LineFallMissile : MonoBehaviour
                 case "Player":
                     //case "WasteBasket":
                     //Debug.Log("If Player : " +collision.tag);
+                    Instantiate(missileExplosion, this.transform.position, Quaternion.identity);
+                    PublicValueStorage.Instance.GetPlayerComponent().ActivatePlayerDie();
                     Destroy(this.gameObject);
                     break;
 
@@ -135,13 +151,15 @@ public class LineFallMissile : MonoBehaviour
                     //missileColor.color = Color.blue;
                     //Debug.Log(missileColor);
                     //GameManager.Instance.ScoreAdd("Missile");
+                    ControllerPlayer tempPlayer = PublicValueStorage.Instance.GetPlayerComponent();
                     PublicValueStorage.Instance.AddMissileScore();
+                    tempPlayer.OP_DamageToPlayerShield(missileShieldBreakPercent);
+                    tempPlayer.DamageToShieldForLineFallMissile();
                     direction = opCurves.SeekDirection(this.gameObject.transform.position, parentPos);
                     missileCurrentSpeed *= missileReflectSpeed;
                     break;
             }
         }
-
 
         else if (this.tag == "PlayerMissile")
         {
@@ -152,8 +170,24 @@ public class LineFallMissile : MonoBehaviour
             switch (collision.tag)
             {
                 case "Enemy":
+                case "BOSS":
+                    Instantiate(missileExplosion, this.transform.position, Quaternion.identity);
                     Destroy(this.gameObject);
                     break;
+
+                   
+            }
+        }
+    }
+
+    private void OnTriggerStay2D(Collider2D collision)
+    {
+        if (this.tag == "LineFallSlowRailGun")
+        {
+            if (collision.tag == "PlayerShield")
+            {
+                player.DamageToShieldForLineFallMissile();
+                PublicValueStorage.Instance.AddMissileScore();
             }
         }
     }
@@ -165,7 +199,10 @@ public class LineFallMissile : MonoBehaviour
 
     private void OnDisable()
     {
+        GameManager.onDestroyAllObject -= OnDestroyAllObject;
         GameManager.onPlayerDie -= OnPlayerDie;
         GameManager.onDestroyAllEnemy -= OnPlayerDie;
+        if (this.tag != "LineFallSlowRailGun")
+            GameManager.onDeadByItemBomb -= OnPlayerDie;
     }
 }

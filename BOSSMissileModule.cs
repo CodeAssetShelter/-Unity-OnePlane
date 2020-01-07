@@ -21,7 +21,7 @@ public class BOSSMissileModule : MonoBehaviour {
     enum BossPatternState { Shuffle, Selected, Launch, Cooldown, StateCount }
     BossPatternState bossPatternState;
 
-    public enum BossPatternName { Normal = 0, Side, BigLaser, Round, RandomSpawn, StateCount }
+    public enum BossPatternName { Normal = 0, Side, Round, RandomSpawn, StateCount, BigLaser }
     BossPatternName bossPatternName;
 
     // Debug Options
@@ -29,9 +29,14 @@ public class BOSSMissileModule : MonoBehaviour {
 
 
     // Prefabs
+    [Header ("- Missiles")]
     public GameObject bossMissile;
-
-
+    public AudioClip soundMissileNormal;
+    public AudioClip soundMissileRandom;
+    public AudioClip soundMissileSide;
+    public AudioClip soundMissileRound;
+    private AudioClip soundSendClip;
+    private SoundManager.Speaker soundSendSpeaker = SoundManager.Speaker.Center;
     // LaunchMissile
     //private int bossPatternNumber = 0;
 
@@ -69,7 +74,7 @@ public class BOSSMissileModule : MonoBehaviour {
     private int missileRoopEa = 0;
     private float missileFullAngle = 360f;
     private float missileAngle = 0;
-    private int missileRoundAttackCheck = 0;
+    //private int missileRoundAttackCheck = 0;
     public int missileRoundAttackStack = 3;
     private float variableAngle = 0;
 
@@ -142,9 +147,9 @@ public class BOSSMissileModule : MonoBehaviour {
             if (bossPatternName == BossPatternName.Round)
             {
                 variableAngle = Random.Range(-missileFullAngle, missileFullAngle);
+                SoundManager.Instance.ShortSpeaker(SoundManager.Speaker.Center, soundMissileRound);
             }
 
-            Debug.Log("Selected : " + bossPatternName);
             //Debug.Log("missile Ea : " + missileEa);
             //Debug.Log("missile stack : " + missileSaveStack);
 
@@ -172,10 +177,10 @@ public class BOSSMissileModule : MonoBehaviour {
     {
         if (missileLaunchStack >= missileSaveStack)
         {
-            Debug.Log("Shuffle");
             bossPatternState = BossPatternState.Cooldown;
             missileSideChase = false;
             missileLaunchStack = 0;
+            missileSideLaunchStack = 0;
             missileEa = 1;
             missileRoopEa = 0;
             variableAngle = 0;
@@ -201,10 +206,15 @@ public class BOSSMissileModule : MonoBehaviour {
                         //ChaseTimer = Random.Range(ChaseTimerMin, ChaseTimerMax);
                         chaseMode = false;
                         targetPos = playerPos;
+
+                        soundSendClip = soundMissileNormal;
+                        soundSendSpeaker = SoundManager.Speaker.Center;
                         break;
                     }
                 case BossPatternName.Side:
                     {
+                        soundSendClip = soundMissileSide;
+
                         // missile will going to out of screed both side
                         bezierStart = bezierCenter = bezierEnd = this.gameObject.transform.position;
                         targetPos = bezierEnd;
@@ -213,12 +223,6 @@ public class BOSSMissileModule : MonoBehaviour {
                         // Launch Mode
                         if (missileSideChase == false)
                         {
-                            // Switch Attack Mode
-                            if (missileSideLaunchStack >= missileSaveStack)
-                            {
-                                missileSideChase = true;
-                                missileLaunchStack = 0;
-                            }
 
                             // Launch Right side
                             if (missileSideIsLeft == false)
@@ -233,10 +237,20 @@ public class BOSSMissileModule : MonoBehaviour {
 
                             missileSideIsLeft = !missileSideIsLeft;
 
+                            soundSendSpeaker = SoundManager.Speaker.Center;
+
                             direction = opCurves.SeekDirection(this.transform.position, targetPos);
 
                             missileSideLaunchStack++;
                             missileLaunchStack--;
+
+                            // Switch Attack Mode
+                            if (missileSideLaunchStack >= missileSaveStack)
+                            {
+                                missileSideChase = true;
+                                missileLaunchStack = 0;
+                                missileSideLaunchStack = 0;
+                            }
                         }
                         // Attack Mode
                         else
@@ -246,26 +260,29 @@ public class BOSSMissileModule : MonoBehaviour {
                             {
                                 spawnPosition = playerPos;
                                 spawnPosition.x = screenWidth + 0.5f;
+
+                                soundSendSpeaker = SoundManager.Speaker.Right;
                             }
                             // Attack from left side
                             else
                             {
                                 spawnPosition = playerPos;
                                 spawnPosition.x = -screenWidth - 0.5f;
+
+                                soundSendSpeaker = SoundManager.Speaker.Left;
                             }
                             chaseMode = true;
                             missileSideIsLeft = !missileSideIsLeft;
                             bezierStart = bezierCenter = bezierEnd = spawnPosition;
-                            Debug.Log("Pos : " + playerPos);
                             direction = opCurves.SeekDirection(spawnPosition, playerPos);
 
                             //targetPos = playerPos;
-                        }                        
+                        }                       
                         break;
                     }
                 case BossPatternName.BigLaser:
                     {
-                        Debug.Log("BigLaser is not finished, Change Cooldown");
+                        //Debug.Log("BigLaser is not finished, Change Cooldown");
                         bossPatternState = BossPatternState.Cooldown;
                         return;
                         
@@ -283,19 +300,24 @@ public class BOSSMissileModule : MonoBehaviour {
 
                         chaseMode = true;
 
+                        soundSendClip = soundMissileRound;
+                        soundSendSpeaker = SoundManager.Speaker.Center;
+
                         break;
                     }
                 case BossPatternName.RandomSpawn:
                     {
+                        soundSendClip = soundMissileRandom;
+
                         spawnPosition.x = (Random.Range(-screenWidth, screenWidth)) * 0.5f;
                         spawnPosition.y = (Random.Range(-(screenHeight * 0.25f), screenHeight));
-                        direction = opCurves.SeekDirection(spawnPosition, playerPos);
+                        direction = opCurves.SeekDirection(spawnPosition, PublicValueStorage.Instance.GetPlayerPos());
                         chaseMode = true;
 
                         break;
                     }
                 default:
-                    Debug.Log("BossShotMissile Module Error!");
+                    //Debug.Log("BossShotMissile Module Error!");
                     break;
             }
             // Missile display on Hierarchy Root
@@ -306,18 +328,19 @@ public class BOSSMissileModule : MonoBehaviour {
                 if (bossPatternName == BossPatternName.Round)
                 {
                     Quaternion v3Rotation = Quaternion.Euler(0f, 0, (missileAngle * i) + variableAngle);  // 회전각 
-                    Vector3 v3Direction = Vector3.down; // 회전시킬 벡터(테스트용으로 world forward 썼음) 
+                    Vector3 v3Direction = Vector3.down;
                     Vector3 v3RotatedDirection = v3Rotation * v3Direction;
                     direction = v3RotatedDirection;
                 }
-               
 
-                //Debug.Log("Rotate : " + (missileFullAngle / missileEa) * (i + 1));
+
                 GameObject temp = Instantiate(bossMissile, spawnPosition, Quaternion.Euler(0, 0, 0));
                 BOSSMissile temp2 = temp.GetComponent<BOSSMissile>();
+                
+                if (missileEa == 1)
+                    SoundManager.Instance.ShortSpeaker(soundSendSpeaker, soundSendClip);
 
-
-                temp2.SetRoute(direction, bezierStart, bezierCenter, bezierEnd, chaseSpeed, chaseMode, this.gameObject.transform.position, (int)bossPatternName);
+                temp2.SetRoute(direction, bezierStart, bezierCenter, bezierEnd, chaseSpeed * PublicValueStorage.Instance.GetAddSpeedRivisionValue(), chaseMode, this.gameObject.transform.position, (int)bossPatternName);
                 temp2.SetPlayerPosition(playerPos);
             }
             

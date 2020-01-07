@@ -28,7 +28,11 @@ public class Shop : MonoBehaviour
             Goods info = temp.GetComponent<Goods>();
             int selectedIndex = -1;
 
-            info.SetGoodsInfo(planes.planeSprite[i], planes.goodsInfo[i].name, planes.goodsInfo[i].detail, planes.goodsInfo[i].price);
+            info.SetGoodsInfo
+                (planes.planeSprite[i], planes.goodsInfo[i].name, 
+                planes.goodsInfo[i].detail, planes.goodsInfo[i].price,
+                planes.goodsInfo[i].life, (int)planes.goodsInfo[i].shield,
+                planes.goodsInfo[i].itemSlot);
             if (planes.goodsInfo[i].purchased == true)
             {
                 PurchasedAlready(info);
@@ -76,22 +80,35 @@ public class Shop : MonoBehaviour
 
     public void Purchased(Goods goods)
     {
-        int tempCredit = PublicValueStorage.Instance.RefreshCredit((-1) * goods.priceInt);
+        //int tempCredit = PublicValueStorage.Instance.RefreshCredit((-1) * goods.priceInt);
+        int tempCredit = PublicValueStorage.Instance.RefreshCredit(0);
 
-        goods.purchaseButton.interactable = false;
-        goods.purchasedImage.color = new Color(0, 0, 0, 0.5f);
-        credit.text = "" + tempCredit;
-        
-        for(int i = 0; i < planes.goodsInfo.Length; i++)
+        if (tempCredit <= goods.priceInt)
         {
-            if (planes.goodsInfo[i].name == goods.itemName.text)
-            {
-                planes.goodsInfo[i].purchased = true;
-                goods.selectButton.gameObject.SetActive(true);
-                PublicValueStorage.Instance.RefreshCredit(0);
-                SaveData.Instance.SaveUserData();
-            }
+            SoundManager.Instance.UiSpeaker(SoundManager.UISound.PurchaseFail);
+            return;
         }
+        else
+        {
+            tempCredit = PublicValueStorage.Instance.RefreshCredit((-1) * goods.priceInt);
+            goods.purchaseButton.interactable = false;
+            goods.purchasedImage.color = new Color(0, 0, 0, 0.5f);
+            credit.text = "" + tempCredit;
+        
+            for(int i = 0; i < planes.goodsInfo.Length; i++)
+            {
+                if (planes.goodsInfo[i].name == goods.itemName.text)
+                {
+                    planes.goodsInfo[i].purchased = true;
+                    goods.selectButton.gameObject.SetActive(true);
+                    PublicValueStorage.Instance.RefreshCredit(0);
+                    SaveData.Instance.SaveUserData();
+                }
+            }
+
+            SoundManager.Instance.UiSpeaker(SoundManager.UISound.Purchase);
+        }
+
     }
 
     
@@ -119,6 +136,7 @@ public class Shop : MonoBehaviour
                 planes.selectedIndex = i;
 
                 SaveData.Instance.SaveUserData();
+                //Debug.Log("Selected");
             }
         }
     }

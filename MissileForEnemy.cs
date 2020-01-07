@@ -4,7 +4,13 @@ using UnityEngine;
 
 public class MissileForEnemy : MonoBehaviour {
 
-    public GameObject player;
+    public ControllerPlayer player;
+    public GameObject missileExplosion;
+
+    [Header("- Animation")]
+    public Animator animator;
+    public int animatorNumber = 0;
+
     //private Vector2 playerPos;
     private Vector2 parentPos;
     public OPCurves opCurves;
@@ -29,10 +35,17 @@ public class MissileForEnemy : MonoBehaviour {
 
     private SpriteRenderer missileColor;
 
+    private void OnDestroyAllObject()
+    {
+        Destroy(this.gameObject);
+    }
     private void OnEnable()
     {
+        GameManager.onDestroyAllObject += OnDestroyAllObject;
         GameManager.onPlayerDie += OnPlayerDie;
         GameManager.onDestroyAllEnemy += OnPlayerDie;
+
+        animator.SetInteger("MissileAnimTrigger", animatorNumber);
     }
     // Use this for initialization
     void Start()
@@ -58,8 +71,8 @@ public class MissileForEnemy : MonoBehaviour {
         //distance = heading.magnitude;
         //direction = heading / distance;
 
-        missileColor = this.gameObject.GetComponent<SpriteRenderer>();
-        missileColor.color = new Color(1, 0.5f, 1);
+        //missileColor = this.gameObject.GetComponent<SpriteRenderer>();
+        //missileColor.color = new Color(1, 0.5f, 1);
     }
 
     // Update is called once per frame
@@ -118,16 +131,18 @@ public class MissileForEnemy : MonoBehaviour {
             switch (collision.tag)
             {
                 case "Player":
-                //case "WasteBasket":
+                    //case "WasteBasket":
+                    Instantiate(missileExplosion, this.transform.position, Quaternion.identity);
+                    PublicValueStorage.Instance.GetPlayerComponent().ActivatePlayerDie();
                     Destroy(this.gameObject);
-                    //Debug.Log("This!");
                     break;
 
                 case "PlayerShield":
                     this.tag = "PlayerMissile";
                     this.name = "PlayerMissile";
                     enemyTrail.enabled = true;
-                    missileColor.color = Color.blue;
+                    animator.SetInteger("MissileAnimTrigger", 2);
+                    //missileColor.color = Color.blue;
                     //Debug.Log(missileColor);
                     //GameManager.Instance.ScoreAdd("Missile");
                     PublicValueStorage.Instance.AddMissileScore();
@@ -141,7 +156,8 @@ public class MissileForEnemy : MonoBehaviour {
         {
             switch (collision.tag)
             {
-                case "Enemy":                    
+                case "Enemy":
+                    Instantiate(missileExplosion, this.transform.position, Quaternion.identity);
                     Destroy(this.gameObject);
                     break;
             }
@@ -173,6 +189,7 @@ public class MissileForEnemy : MonoBehaviour {
 
     private void OnDisable()
     {
+        GameManager.onDestroyAllObject -= OnDestroyAllObject;
         GameManager.onPlayerDie -= OnPlayerDie;
         GameManager.onDestroyAllEnemy -= OnPlayerDie;
     }
